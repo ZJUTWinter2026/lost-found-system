@@ -2,10 +2,13 @@
 
 import { animate } from 'animejs'
 import { Button, Card, Checkbox, Flex, Form, Input } from 'antd'
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 
 function LoginPage() {
   const rootRef = useRef<HTMLDivElement | null>(null)
+  const formItemStyle = { marginBottom: 12 }
+  const router = useRouter()
 
   useEffect(() => {
     const root = rootRef.current
@@ -49,7 +52,8 @@ function LoginPage() {
         className="relative z-10 h-full px-4 sm:px-6"
       >
         <Card
-          className="md:w-[500px] w-[300px] overflow-hidden rounded-xl border border-zinc-200/80 bg-white/95 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.25)] backdrop-blur"
+          styles={{ body: { padding: 24 } }}
+          className="md:w-[450px] w-[300px] overflow-hidden rounded-xl border border-zinc-200/80 bg-white/95 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.25)] backdrop-blur"
         >
           <Flex
             component="section"
@@ -82,16 +86,18 @@ function LoginPage() {
               <Form.Item
                 label="账号"
                 name="account"
+                style={formItemStyle}
               >
                 <Input
                   size="large"
-                  placeholder="手机号 / 邮箱 / 学号"
+                  placeholder="学号 / 工号"
                   autoComplete="username"
                 />
               </Form.Item>
               <Form.Item
                 label="密码"
                 name="password"
+                style={formItemStyle}
               >
                 <Input.Password
                   size="large"
@@ -106,20 +112,12 @@ function LoginPage() {
                   size="large"
                   block
                   className="h-12"
+                  onClick={() => router.push('/homepage')}
                 >
                   登录
                 </Button>
               </div>
             </Form>
-
-            <Flex vertical>
-              <Flex align="center" justify="center">
-                还没有账号？
-                <Button type="link" size="small" className="px-1">
-                  立即注册
-                </Button>
-              </Flex>
-            </Flex>
           </Flex>
         </Card>
       </Flex>

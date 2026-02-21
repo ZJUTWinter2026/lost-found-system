@@ -8,5 +8,5 @@ export interface FeedbackRecord {
   id: string
   content: string
   createdAt: string
-  status: '已处理' | '处理中'
+  status: '待审核' | '已处理' | '处理中'
 }

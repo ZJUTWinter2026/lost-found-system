@@ -18,7 +18,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'my-posts', label: '我的发布', path: '/my-posts' },
 ]
 
-function TopNav(): JSX.Element {
+function TopNav() {
   const router = useRouter()
   const pathname = usePathname()
   const [feedbackOpen, setFeedbackOpen] = useState(false)

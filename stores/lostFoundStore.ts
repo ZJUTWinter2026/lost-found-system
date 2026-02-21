@@ -1,5 +1,6 @@
 'use client'
 
+import type { PublishRecord, SubmitPublishPayload } from '@/components/publish/types'
 import type {
   ClaimRequest,
   FeedbackRecord,
@@ -13,9 +14,11 @@ import { INITIAL_FEEDBACK_RECORDS, MOCK_LOST_FOUND_ITEMS } from '@/components/qu
 interface LostFoundStore {
   items: LostFoundItem[]
   claimRequests: ClaimRequest[]
+  publishRecords: PublishRecord[]
   feedbackRecords: FeedbackRecord[]
   submitClaim: (payload: SubmitClaimPayload) => boolean
   submitFeedback: (payload: SubmitFeedbackPayload) => boolean
+  submitPublish: (payload: SubmitPublishPayload) => boolean
 }
 
 function createRecordId(prefix: string) {
@@ -25,6 +28,7 @@ function createRecordId(prefix: string) {
 export const useLostFoundStore = create<LostFoundStore>(set => ({
   items: MOCK_LOST_FOUND_ITEMS,
   claimRequests: [],
+  publishRecords: [],
   feedbackRecords: INITIAL_FEEDBACK_RECORDS,
   submitClaim: (payload) => {
     let isSubmitted = false
@@ -72,5 +76,39 @@ export const useLostFoundStore = create<LostFoundStore>(set => ({
       ],
     }))
     return true
+  },
+  submitPublish: (payload) => {
+    let isSubmitted = false
+    set((state) => {
+      if (payload.postType === '招领' && payload.photos.length === 0)
+        return state
+
+      const record: PublishRecord = {
+        id: createRecordId('POST'),
+        postType: payload.postType,
+        itemType: payload.itemType.trim(),
+        location: payload.location.trim(),
+        timeRange: payload.timeRange,
+        status: payload.status,
+        itemName: payload.itemName.trim(),
+        occurredAt: payload.occurredAt,
+        features: payload.features.trim(),
+        contactName: payload.contactName.trim(),
+        contactPhone: payload.contactPhone.trim(),
+        hasReward: payload.hasReward,
+        rewardRemark: payload.rewardRemark?.trim() || undefined,
+        photos: payload.photos.slice(0, 3),
+        createdAt: new Date().toISOString(),
+        reviewStatus: '待审核',
+      }
+
+      isSubmitted = true
+
+      return {
+        publishRecords: [record, ...state.publishRecords],
+      }
+    })
+
+    return isSubmitted
   },
 }))

@@ -1,6 +1,6 @@
 'use client'
 
-import type { ClaimRequest } from '@/components/query/types'
+import type { PublishRecord } from '@/components/publish/types'
 import { Card, Empty, Flex, List, Tabs, Tag, Typography } from 'antd'
 import { formatDateTime } from '@/components/query/utils'
 import { useLostFoundStore } from '@/stores/lostFoundStore'
@@ -8,7 +8,7 @@ import { useLostFoundStore } from '@/stores/lostFoundStore'
 const { Paragraph, Title } = Typography
 
 interface PendingListProps {
-  records: ClaimRequest[]
+  records: PublishRecord[]
   emptyText: string
 }
 
@@ -24,9 +24,10 @@ function PendingList({ records, emptyText }: PendingListProps) {
           <Flex vertical gap={8} className="w-full rounded-lg border border-blue-100 bg-blue-50 px-3 py-3">
             <Flex align="center" justify="space-between" gap={8}>
               <span className="text-sm font-medium text-blue-900">{record.itemName}</span>
-              <Tag color="gold">{record.status}</Tag>
+              <Tag color="gold">{record.reviewStatus}</Tag>
             </Flex>
-            <span className="text-sm text-blue-900/70">{`申请类型：${record.action}`}</span>
+            <span className="text-sm text-blue-900/70">{`类型：${record.itemType} | 地点：${record.location}`}</span>
+            <span className="text-sm text-blue-900/70">{`状态：${record.status}`}</span>
             <span className="text-xs text-blue-900/60">{formatDateTime(record.createdAt)}</span>
           </Flex>
         </List.Item>
@@ -36,9 +37,9 @@ function PendingList({ records, emptyText }: PendingListProps) {
 }
 
 function MyPostsPage() {
-  const claimRequests = useLostFoundStore(state => state.claimRequests)
-  const lostRequests = claimRequests.filter(record => record.requestCategory === '失物')
-  const foundRequests = claimRequests.filter(record => record.requestCategory === '招领')
+  const publishRecords = useLostFoundStore(state => state.publishRecords)
+  const lostRecords = publishRecords.filter(record => record.postType === '失物')
+  const foundRecords = publishRecords.filter(record => record.postType === '招领')
 
   return (
     <Flex vertical gap={12} className="mx-auto w-full max-w-4xl">
@@ -47,7 +48,7 @@ function MyPostsPage() {
           我的发布
         </Title>
         <Paragraph className="!mb-0 !text-blue-900/70">
-          认领申请提交成功后，会在对应分组中新增一条“待审核”记录。
+          发布信息提交成功后，会在对应分组新增一条“待审核”记录。
         </Paragraph>
       </Card>
 
@@ -56,20 +57,20 @@ function MyPostsPage() {
           items={[
             {
               key: 'lost',
-              label: `失物（找回）${lostRequests.length ? ` ${lostRequests.length}` : ''}`,
+              label: `失物（找回）${lostRecords.length ? ` ${lostRecords.length}` : ''}`,
               children: (
                 <PendingList
-                  records={lostRequests}
+                  records={lostRecords}
                   emptyText="暂无失物待审核记录"
                 />
               ),
             },
             {
               key: 'found',
-              label: `招领（归还）${foundRequests.length ? ` ${foundRequests.length}` : ''}`,
+              label: `招领（归还）${foundRecords.length ? ` ${foundRecords.length}` : ''}`,
               children: (
                 <PendingList
-                  records={foundRequests}
+                  records={foundRecords}
                   emptyText="暂无招领待审核记录"
                 />
               ),

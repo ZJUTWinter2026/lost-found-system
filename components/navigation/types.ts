@@ -3,10 +3,3 @@ export interface NavItem {
   label: string
   path: '/query' | '/publish' | '/my-posts'
 }
-
-export interface FeedbackRecord {
-  id: string
-  content: string
-  createdAt: string
-  status: '待审核' | '已处理' | '处理中'
-}

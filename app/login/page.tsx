@@ -1,9 +1,11 @@
 'use client'
 
 import { animate } from 'animejs'
-import { Button, Card, Flex, Form, Input, message } from 'antd'
+import { Button, Card, Flex, Form, Input, message, Typography } from 'antd'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
+
+const { Text, Title } = Typography
 
 function LoginPage() {
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -70,18 +72,19 @@ function LoginPage() {
             className="bg-white"
           >
             <Flex vertical gap="5px">
-              <p
+              <Text
                 data-animate="rise"
                 className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500"
               >
                 Welcome Back
-              </p>
-              <h2
+              </Text>
+              <Title
+                level={2}
                 data-animate="rise"
-                className="text-2xl font-semibold text-zinc-900"
+                className="!mb-0 !text-2xl !font-semibold !text-zinc-900"
               >
                 校园失物招领平台
-              </h2>
+              </Title>
             </Flex>
 
             <Form
@@ -113,7 +116,7 @@ function LoginPage() {
                   autoComplete="current-password"
                 />
               </Form.Item>
-              <div className="pt-2">
+              <Flex className="pt-2">
                 <Button
                   type="primary"
                   htmlType="submit"
@@ -123,7 +126,7 @@ function LoginPage() {
                 >
                   登录
                 </Button>
-              </div>
+              </Flex>
             </Form>
           </Flex>
         </Card>

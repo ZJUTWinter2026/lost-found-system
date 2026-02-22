@@ -1,8 +1,10 @@
 'use client'
 
 import type { LostFoundItem } from './types'
-import { Card, Empty, Flex, List, Tag } from 'antd'
+import { Card, Empty, Flex, List, Tag, Typography } from 'antd'
 import { formatDateTime } from './utils'
+
+const { Text } = Typography
 
 interface ItemListProps {
   items: LostFoundItem[]
@@ -16,40 +18,50 @@ function ItemList({ items, onSelectItem }: ItemListProps) {
       styles={{ body: { padding: 12 } }}
       title={(
         <Flex align="center" justify="space-between">
-          <span className="text-base font-medium text-blue-700">物品信息列表</span>
-          <span className="text-xs text-blue-900/60">{`共 ${items.length} 条`}</span>
+          <Text className="text-base font-medium text-blue-700">物品信息列表</Text>
+          <Text className="text-xs text-blue-900/60">{`共 ${items.length} 条`}</Text>
         </Flex>
       )}
     >
       {items.length
         ? (
-            <div className="max-h-[64dvh] overflow-y-auto">
+            <Flex vertical className="max-h-[64dvh] overflow-y-auto">
               <List
                 dataSource={items}
                 renderItem={item => (
                   <List.Item className="!border-none !px-0 !py-1">
-                    <button
-                      type="button"
+                    <Card
+                      hoverable
+                      size="small"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => onSelectItem(item.id)}
-                      className="w-full rounded-lg border border-blue-100 bg-white px-3 py-3 text-left transition hover:border-blue-300"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          onSelectItem(item.id)
+                        }
+                      }}
+                      className="w-full rounded-lg border-blue-100"
+                      styles={{ body: { padding: 12 } }}
                     >
                       <Flex vertical gap={8}>
                         <Flex align="center" justify="space-between" gap={8}>
-                          <span className="text-base font-medium text-blue-900">{item.name}</span>
+                          <Text className="text-base font-medium text-blue-900">{item.name}</Text>
                           <Tag color={item.status === '已归还' ? 'blue' : item.status === '待认领' ? 'processing' : 'gold'}>
                             {item.status}
                           </Tag>
                         </Flex>
-                        <span className="text-sm text-blue-900/70">{`地点：${item.location}`}</span>
-                        <span className="text-sm text-blue-900/70">
+                        <Text className="text-sm text-blue-900/70">{`地点：${item.location}`}</Text>
+                        <Text className="text-sm text-blue-900/70">
                           {`时间：${formatDateTime(item.occurredAt)}`}
-                        </span>
+                        </Text>
                       </Flex>
-                    </button>
+                    </Card>
                   </List.Item>
                 )}
               />
-            </div>
+            </Flex>
           )
         : (
             <Empty description="暂无符合条件的信息" />

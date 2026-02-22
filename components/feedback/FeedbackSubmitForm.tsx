@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, Checkbox, Flex, Input, message } from 'antd'
+import { Button, Checkbox, Flex, Input, message, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import {
   FEEDBACK_TYPE_OPTIONS,
@@ -8,6 +8,7 @@ import {
 } from '@/components/query/constants'
 
 const { TextArea } = Input
+const { Text } = Typography
 
 interface FeedbackSubmitFormProps {
   onSubmit: (payload: { types: string[], description: string }) => boolean | void
@@ -126,13 +127,13 @@ function FeedbackSubmitForm({
   return (
     <Flex vertical gap={14}>
       <Flex vertical gap={8}>
-        <div className="text-sm text-blue-900">
-          投诉与反馈类型
-          <span className="ml-1 text-red-500">*</span>
-        </div>
-        <span className="text-xs text-blue-900/60">
+        <Flex align="center" gap={4}>
+          <Text className="text-sm text-blue-900">投诉与反馈类型</Text>
+          <Text className="text-red-500">*</Text>
+        </Flex>
+        <Text className="text-xs text-blue-900/60">
           请选择最接近的问题类型，例如信息不实、认领争议、处理进度慢等。
-        </span>
+        </Text>
         <Checkbox.Group
           value={selectedTypes}
           options={FEEDBACK_TYPE_OPTIONS}
@@ -149,9 +150,9 @@ function FeedbackSubmitForm({
             maxLength={15}
           />
           <Flex justify="end">
-            <span className="text-xs text-blue-900/50">
+            <Text className="text-xs text-blue-900/50">
               {`${otherTypeInput.length} / 15`}
-            </span>
+            </Text>
           </Flex>
           <Flex justify="end" gap={8}>
             <Button onClick={handleOtherTypeCancel}>取消</Button>
@@ -161,20 +162,20 @@ function FeedbackSubmitForm({
           </Flex>
           {isOtherTypeConfirmed
             ? (
-                <span className="text-xs text-blue-700">
+                <Text className="text-xs text-blue-700">
                   {`已确认其它类型：${confirmedOtherType}`}
-                </span>
+                </Text>
               )
             : (
-                <span className="text-xs text-blue-900/60">
+                <Text className="text-xs text-blue-900/60">
                   请输入后点击“确认”，否则无法提交
-                </span>
+                </Text>
               )}
         </Flex>
       )}
 
       <Flex vertical gap={8}>
-        <div className="text-sm text-blue-900">投诉与反馈说明（可选）</div>
+        <Text className="text-sm text-blue-900">投诉与反馈说明（可选）</Text>
         <TextArea
           value={feedbackDescription}
           onChange={event => setFeedbackDescription(event.target.value)}
@@ -185,9 +186,9 @@ function FeedbackSubmitForm({
       </Flex>
 
       <Flex justify="end">
-        <span className="text-xs text-blue-900/50">
+        <Text className="text-xs text-blue-900/50">
           {`${feedbackDescription.length} / 500`}
-        </span>
+        </Text>
       </Flex>
 
       <Flex justify="end" gap={8}>

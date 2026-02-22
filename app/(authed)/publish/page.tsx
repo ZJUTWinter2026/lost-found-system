@@ -352,10 +352,10 @@ function PublishPage() {
         >
           <Flex vertical gap={12}>
             <Flex vertical gap={8}>
-              <div className="text-sm font-medium text-blue-900">
-                <span className="mr-1 text-red-500">*</span>
-                发布类型
-              </div>
+              <Flex align="center" gap={4}>
+                <Text className="text-red-500">*</Text>
+                <Text className="text-sm font-medium text-blue-900">发布类型</Text>
+              </Flex>
               <Form.Item
                 name="postType"
                 className="!mb-0"

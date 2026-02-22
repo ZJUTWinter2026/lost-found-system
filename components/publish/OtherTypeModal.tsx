@@ -1,4 +1,6 @@
-import { Flex, Input, Modal } from 'antd'
+import { Flex, Input, Modal, Typography } from 'antd'
+
+const { Text } = Typography
 
 interface OtherTypeModalProps {
   open: boolean
@@ -33,7 +35,7 @@ function OtherTypeModal({
           onChange={event => onChange(event.target.value)}
         />
         <Flex justify="end" className="text-xs text-blue-900/50">
-          {`${value.length} / 15`}
+          <Text className="text-xs text-blue-900/50">{`${value.length} / 15`}</Text>
         </Flex>
       </Flex>
     </Modal>

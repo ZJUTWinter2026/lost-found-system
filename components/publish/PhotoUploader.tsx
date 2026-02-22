@@ -1,6 +1,6 @@
 import type { UploadProps } from 'antd'
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons'
-import { Button, Flex, Image, message, Upload } from 'antd'
+import { Button, Card, Flex, Image, message, Upload } from 'antd'
 
 interface PhotoUploaderProps {
   photos: string[]
@@ -64,28 +64,30 @@ function PhotoUploader({ photos, maxCount = 3, onChange }: PhotoUploaderProps) {
       {!!photos.length && (
         <Flex gap={8} wrap className="w-full">
           {photos.map((photo, index) => (
-            <Flex
+            <Card
               key={`${photo.slice(0, 20)}-${index + 1}`}
-              vertical
-              gap={6}
-              className="rounded-lg border border-blue-100 bg-white p-2"
+              size="small"
+              className="rounded-lg border-blue-100"
+              styles={{ body: { padding: 8 } }}
             >
-              <Image
-                src={photo}
-                alt={`上传图片-${index + 1}`}
-                width={92}
-                height={92}
-                className="rounded-lg object-cover"
-              />
-              <Button
-                size="small"
-                type="text"
-                icon={<DeleteOutlined />}
-                onClick={() => removePhoto(index)}
-              >
-                删除
-              </Button>
-            </Flex>
+              <Flex vertical gap={6}>
+                <Image
+                  src={photo}
+                  alt={`上传图片-${index + 1}`}
+                  width={92}
+                  height={92}
+                  className="rounded-lg object-cover"
+                />
+                <Button
+                  size="small"
+                  type="text"
+                  icon={<DeleteOutlined />}
+                  onClick={() => removePhoto(index)}
+                >
+                  删除
+                </Button>
+              </Flex>
+            </Card>
           ))}
         </Flex>
       )}

@@ -1,83 +1,588 @@
 'use client'
 
-import type { PublishRecord } from '@/components/publish/types'
-import { Card, Empty, Flex, List, Tabs, Tag, Typography } from 'antd'
-import { formatDateTime } from '@/components/query/utils'
+import type {
+  PublishEditablePayload,
+  PublishRecord,
+  PublishReviewStatus,
+} from '@/components/publish/types'
+import {
+  DeleteOutlined,
+  EditOutlined,
+  ExclamationCircleFilled,
+  FileTextOutlined,
+  StopOutlined,
+} from '@ant-design/icons'
+import {
+  AutoComplete,
+  Button,
+  Card,
+  Empty,
+  Flex,
+  Form,
+  Input,
+  List,
+  message,
+  Modal,
+  Radio,
+  Segmented,
+  Space,
+  Tag,
+  Typography,
+} from 'antd'
+import { useEffect, useMemo, useState } from 'react'
+import { CONTACT_PHONE_PATTERN } from '@/components/publish/constants'
+import PhotoUploader from '@/components/publish/PhotoUploader'
+import { ITEM_TYPE_OPTIONS, LOCATION_OPTIONS } from '@/components/query/constants'
+import { formatDateTime, toTimestamp } from '@/components/query/utils'
 import { useLostFoundStore } from '@/stores/lostFoundStore'
 
-const { Paragraph, Title } = Typography
+const { Text } = Typography
+const { TextArea } = Input
 
-interface PendingListProps {
-  records: PublishRecord[]
-  emptyText: string
+type PostTypeTab = '失物' | '招领'
+type EditorMode = 'edit' | 'supplement'
+
+interface ManageFormValues {
+  itemType?: string
+  location?: string
+  itemName?: string
+  occurredAt?: string
+  features?: string
+  contactName?: string
+  contactPhone?: string
+  hasReward?: boolean
+  rewardRemark?: string
 }
 
-function PendingList({ records, emptyText }: PendingListProps) {
-  if (!records.length)
-    return <Empty description={emptyText} />
+interface StatusSectionProps {
+  status: PublishReviewStatus
+  records: PublishRecord[]
+  onEdit: (record: PublishRecord) => void
+  onDelete: (record: PublishRecord) => void
+  onSupplement: (record: PublishRecord) => void
+  onCancelPublish: (record: PublishRecord) => void
+}
+
+interface RecordEditorModalProps {
+  open: boolean
+  mode: EditorMode
+  record?: PublishRecord
+  onCancel: () => void
+  onSubmit: (payload: PublishEditablePayload) => void
+}
+
+const STATUS_ORDER: PublishReviewStatus[] = ['待审核', '已通过', '已匹配', '已认领', '已驳回', '已取消']
+
+const STATUS_TAG_COLOR: Record<PublishReviewStatus, string> = {
+  待审核: 'gold',
+  已通过: 'blue',
+  已匹配: 'purple',
+  已认领: 'green',
+  已驳回: 'red',
+  已取消: 'default',
+}
+
+const ITEM_TYPE_AUTOCOMPLETE_OPTIONS = ITEM_TYPE_OPTIONS.map(option => ({
+  label: option.label,
+  value: option.value,
+}))
+
+const LOCATION_AUTOCOMPLETE_OPTIONS = LOCATION_OPTIONS.map(option => ({
+  label: option.label,
+  value: option.value,
+}))
+
+function toDateTimeLocalValue(value?: string) {
+  if (!value)
+    return undefined
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime()))
+    return undefined
+
+  const pad = (input: number) => String(input).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function buildMergedAutocompleteOptions(value?: string, presetOptions: Array<{ label: string, value: string }> = []) {
+  if (!value)
+    return presetOptions
+
+  const existed = presetOptions.some(option => option.value === value)
+  if (existed)
+    return presetOptions
+
+  return [{ label: value, value }, ...presetOptions]
+}
+
+function RecordEditorModal({
+  open,
+  mode,
+  record,
+  onCancel,
+  onSubmit,
+}: RecordEditorModalProps) {
+  const [form] = Form.useForm<ManageFormValues>()
+  const [photos, setPhotos] = useState<string[]>([])
+  const hasReward = Form.useWatch('hasReward', form)
+  const itemType = Form.useWatch('itemType', form)
+  const location = Form.useWatch('location', form)
+
+  const itemTypeOptions = useMemo(
+    () => buildMergedAutocompleteOptions(itemType, ITEM_TYPE_AUTOCOMPLETE_OPTIONS),
+    [itemType],
+  )
+  const locationOptions = useMemo(
+    () => buildMergedAutocompleteOptions(location, LOCATION_AUTOCOMPLETE_OPTIONS),
+    [location],
+  )
+
+  useEffect(() => {
+    if (!open || !record)
+      return
+
+    form.setFieldsValue({
+      itemType: record.itemType,
+      location: record.location,
+      itemName: record.itemName,
+      occurredAt: toDateTimeLocalValue(record.occurredAt),
+      features: record.features,
+      contactName: record.contactName,
+      contactPhone: record.contactPhone,
+      hasReward: record.hasReward,
+      rewardRemark: record.rewardRemark,
+    })
+    queueMicrotask(() => {
+      setPhotos(record.photos.slice(0, 3))
+    })
+  }, [form, open, record])
+
+  useEffect(() => {
+    if (!open)
+      return
+
+    if (hasReward === false)
+      form.setFieldValue('rewardRemark', undefined)
+  }, [form, hasReward, open])
+
+  const handleConfirm = async () => {
+    try {
+      const values = await form.validateFields()
+      onSubmit({
+        itemType: values.itemType ?? '',
+        location: values.location ?? '',
+        itemName: values.itemName ?? '',
+        occurredAt: values.occurredAt ?? '',
+        features: values.features ?? '',
+        contactName: values.contactName ?? '',
+        contactPhone: values.contactPhone ?? '',
+        hasReward: !!values.hasReward,
+        rewardRemark: values.rewardRemark,
+        photos: photos.slice(0, 3),
+      })
+    }
+    catch {
+      message.warning('请先完善必填项并确认联系方式格式')
+    }
+  }
 
   return (
-    <List
-      dataSource={records}
-      renderItem={record => (
-        <List.Item className="!px-1 !py-3">
-          <Flex vertical gap={8} className="w-full rounded-lg border border-blue-100 bg-blue-50 px-3 py-3">
-            <Flex align="center" justify="space-between" gap={8}>
-              <span className="text-sm font-medium text-blue-900">{record.itemName}</span>
-              <Tag color="gold">{record.reviewStatus}</Tag>
-            </Flex>
-            <span className="text-sm text-blue-900/70">{`类型：${record.itemType} | 地点：${record.location}`}</span>
-            <span className="text-sm text-blue-900/70">{`状态：${record.status}`}</span>
-            <span className="text-xs text-blue-900/60">{formatDateTime(record.createdAt)}</span>
+    <Modal
+      title={mode === 'edit' ? '修改发布信息' : '补充说明'}
+      open={open}
+      onCancel={onCancel}
+      onOk={handleConfirm}
+      okText="确认"
+      cancelText="取消"
+      width={760}
+      destroyOnClose
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{ hasReward: false }}
+      >
+        <Flex vertical gap={8}>
+          <Form.Item
+            name="itemName"
+            label="物品名称"
+            className="!mb-0"
+            rules={[{ required: true, message: '请输入物品名称' }]}
+          >
+            <Input
+              maxLength={30}
+              placeholder="请输入物品名称"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="itemType"
+            label="类型"
+            className="!mb-0"
+            rules={[{ required: true, message: '请输入或选择物品类型' }]}
+          >
+            <AutoComplete
+              options={itemTypeOptions}
+              placeholder="请输入或选择物品类型"
+              filterOption={(input, option) =>
+                String(option?.value ?? '').toLowerCase().includes(input.toLowerCase())}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="location"
+            label={mode === 'edit' ? '丢失地点' : '拾取地点'}
+            className="!mb-0"
+            rules={[{ required: true, message: `请输入${mode === 'edit' ? '丢失' : '拾取'}地点` }]}
+          >
+            <AutoComplete
+              options={locationOptions}
+              placeholder={`请输入${mode === 'edit' ? '丢失' : '拾取'}地点`}
+              filterOption={(input, option) =>
+                String(option?.value ?? '').toLowerCase().includes(input.toLowerCase())}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="occurredAt"
+            label={mode === 'edit' ? '丢失时间' : '拾取时间'}
+            className="!mb-0"
+            rules={[{ required: true, message: `请选择${mode === 'edit' ? '丢失' : '拾取'}时间` }]}
+          >
+            <Input type="datetime-local" />
+          </Form.Item>
+
+          <Form.Item
+            name="features"
+            label="物品特征"
+            className="!mb-0"
+            rules={[{ required: true, message: '请输入物品特征' }]}
+          >
+            <TextArea
+              rows={4}
+              maxLength={200}
+              showCount
+              placeholder="请输入可识别的外观、贴纸、划痕等特征"
+            />
+          </Form.Item>
+
+          <Flex gap={8} wrap>
+            <Form.Item
+              name="contactName"
+              label="联系人"
+              className="!mb-0 w-full sm:w-[calc(50%-4px)]"
+              rules={[{ required: true, message: '请输入联系人' }]}
+            >
+              <Input
+                maxLength={20}
+                placeholder="请输入联系人"
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="contactPhone"
+              label="联系电话"
+              className="!mb-0 w-full sm:w-[calc(50%-4px)]"
+              rules={[
+                { required: true, message: '请输入联系电话' },
+                { pattern: CONTACT_PHONE_PATTERN, message: '请输入正确的手机号或电话' },
+              ]}
+            >
+              <Input
+                maxLength={20}
+                placeholder="请输入联系电话"
+              />
+            </Form.Item>
           </Flex>
-        </List.Item>
-      )}
-    />
+
+          <Form.Item
+            name="hasReward"
+            label="是否有悬赏（可选）"
+            className="!mb-0"
+          >
+            <Radio.Group
+              options={[
+                { label: '无', value: false },
+                { label: '有', value: true },
+              ]}
+            />
+          </Form.Item>
+
+          {hasReward && (
+            <Form.Item
+              name="rewardRemark"
+              label="悬赏说明（可选）"
+              className="!mb-0"
+            >
+              <Input
+                maxLength={30}
+                placeholder="例如：酬谢50元 / 现金答谢"
+              />
+            </Form.Item>
+          )}
+
+          <Flex vertical gap={6}>
+            <Text className="text-sm font-medium text-blue-900">物品照片（最多3张）</Text>
+            <PhotoUploader photos={photos} onChange={setPhotos} />
+            <Text className="text-xs text-blue-900/60">
+              已上传照片将居左排列展示。
+            </Text>
+          </Flex>
+        </Flex>
+      </Form>
+    </Modal>
+  )
+}
+
+function StatusSection({
+  status,
+  records,
+  onEdit,
+  onDelete,
+  onSupplement,
+  onCancelPublish,
+}: StatusSectionProps) {
+  return (
+    <Card className="rounded-lg border-blue-100" styles={{ body: { padding: 12 } }}>
+      <Flex align="center" justify="space-between" className="mb-1">
+        <Space size={8}>
+          <Tag color={STATUS_TAG_COLOR[status]} className="!mr-0">
+            {status}
+          </Tag>
+          <Text className="text-xs text-blue-900/60">{`共 ${records.length} 条`}</Text>
+        </Space>
+      </Flex>
+
+      <List
+        dataSource={records}
+        renderItem={record => (
+          <List.Item className="!px-0 !py-2">
+            <Flex
+              vertical
+              gap={10}
+              className="w-full rounded-lg border border-blue-100 bg-blue-50"
+              style={{ padding: 16 }}
+            >
+              <Flex align="center" justify="space-between" wrap gap={8}>
+                <Space size={8} wrap>
+                  <Text className="text-sm font-semibold text-blue-900">{record.itemName}</Text>
+                  <Tag color={STATUS_TAG_COLOR[record.reviewStatus]} className="!mr-0">
+                    {record.reviewStatus}
+                  </Tag>
+                </Space>
+                <Text className="text-xs text-blue-900/60">{`发布时间：${formatDateTime(record.createdAt)}`}</Text>
+              </Flex>
+
+              <Text className="block text-sm text-blue-900/80">{`类型：${record.itemType}`}</Text>
+              <Text className="block text-sm text-blue-900/80">{`地点：${record.location}`}</Text>
+              <Text className="block text-sm text-blue-900/80">{`发生时间：${formatDateTime(record.occurredAt)}`}</Text>
+              <Text className="block text-sm text-blue-900/80">{`物品特征：${record.features}`}</Text>
+              <Text className="block text-sm text-blue-900/80">{`联系人：${record.contactName} ${record.contactPhone}`}</Text>
+              {record.hasReward && record.rewardRemark && (
+                <Text className="block text-sm text-amber-700">{`悬赏说明：${record.rewardRemark}`}</Text>
+              )}
+              {!!record.updatedAt && (
+                <Text className="block text-xs text-blue-900/60">{`最近更新：${formatDateTime(record.updatedAt)}`}</Text>
+              )}
+              {record.reviewStatus === '已驳回' && record.rejectReason && (
+                <Text className="block text-sm text-red-600">{`驳回原因：${record.rejectReason}`}</Text>
+              )}
+
+              {(record.reviewStatus === '待审核' || record.reviewStatus === '已通过') && (
+                <Flex justify="end" gap={8} wrap className="pt-1">
+                  {record.reviewStatus === '待审核' && (
+                    <>
+                      <Button
+                        size="small"
+                        icon={<EditOutlined />}
+                        className="rounded-lg"
+                        onClick={() => onEdit(record)}
+                      >
+                        修改
+                      </Button>
+                      <Button
+                        danger
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        className="rounded-lg"
+                        onClick={() => onDelete(record)}
+                      >
+                        删除
+                      </Button>
+                    </>
+                  )}
+                  {record.reviewStatus === '已通过' && (
+                    <>
+                      <Button
+                        size="small"
+                        icon={<FileTextOutlined />}
+                        className="rounded-lg"
+                        onClick={() => onSupplement(record)}
+                      >
+                        补充说明
+                      </Button>
+                      <Button
+                        danger
+                        size="small"
+                        icon={<StopOutlined />}
+                        className="rounded-lg"
+                        onClick={() => onCancelPublish(record)}
+                      >
+                        取消发布
+                      </Button>
+                    </>
+                  )}
+                </Flex>
+              )}
+            </Flex>
+          </List.Item>
+        )}
+      />
+    </Card>
   )
 }
 
 function MyPostsPage() {
   const publishRecords = useLostFoundStore(state => state.publishRecords)
-  const lostRecords = publishRecords.filter(record => record.postType === '失物')
-  const foundRecords = publishRecords.filter(record => record.postType === '招领')
+  const updatePublishRecord = useLostFoundStore(state => state.updatePublishRecord)
+  const deletePublishRecord = useLostFoundStore(state => state.deletePublishRecord)
+  const supplementPublishRecord = useLostFoundStore(state => state.supplementPublishRecord)
+  const cancelPublishRecord = useLostFoundStore(state => state.cancelPublishRecord)
+  const [activeTab, setActiveTab] = useState<PostTypeTab>('失物')
+  const [editorState, setEditorState] = useState<{
+    mode: EditorMode
+    record: PublishRecord
+  } | null>(null)
+
+  const { lostRecords, foundRecords } = useMemo(() => {
+    const lost = publishRecords.filter(record => record.postType === '失物')
+    const found = publishRecords.filter(record => record.postType === '招领')
+    return {
+      lostRecords: lost,
+      foundRecords: found,
+    }
+  }, [publishRecords])
+
+  const currentRecords = activeTab === '失物' ? lostRecords : foundRecords
+
+  const groupedRecords = useMemo(
+    () =>
+      STATUS_ORDER
+        .map(status => ({
+          status,
+          records: currentRecords
+            .filter(record => record.reviewStatus === status)
+            .sort((left, right) => toTimestamp(right.createdAt) - toTimestamp(left.createdAt)),
+        }))
+        .filter(group => group.records.length > 0),
+    [currentRecords],
+  )
+
+  const handleDelete = (record: PublishRecord) => {
+    Modal.confirm({
+      title: '确认删除该条发布信息？',
+      content: '删除后不可恢复，同时会同步更新该物品详情。',
+      okText: '确认删除',
+      cancelText: '取消',
+      okType: 'danger',
+      icon: <ExclamationCircleFilled />,
+      onOk: () => {
+        const ok = deletePublishRecord(record.id)
+        if (!ok) {
+          message.error('仅“待审核”记录可删除')
+          return
+        }
+
+        message.success('已删除该条发布信息')
+      },
+    })
+  }
+
+  const handleCancelPublish = (record: PublishRecord) => {
+    Modal.confirm({
+      title: '确认取消发布？',
+      content: '确认后该记录会标记为“已取消”，并同步更新该物品详情。',
+      okText: '确认取消发布',
+      cancelText: '继续保留',
+      okType: 'danger',
+      icon: <ExclamationCircleFilled />,
+      onOk: () => {
+        const ok = cancelPublishRecord(record.id)
+        if (!ok) {
+          message.error('仅“已通过”记录可取消发布')
+          return
+        }
+
+        message.success('已取消发布')
+      },
+    })
+  }
+
+  const handleEditorSubmit = (payload: PublishEditablePayload) => {
+    if (!editorState)
+      return
+
+    const action = editorState.mode === 'edit' ? updatePublishRecord : supplementPublishRecord
+    const ok = action(editorState.record.id, payload)
+
+    if (!ok) {
+      message.error(editorState.mode === 'edit' ? '仅“待审核”记录可修改' : '仅“已通过”记录可补充说明')
+      return
+    }
+
+    message.success(editorState.mode === 'edit' ? '修改成功，已同步更新' : '补充说明成功，已同步更新')
+    setEditorState(null)
+  }
 
   return (
-    <Flex vertical gap={12} className="mx-auto w-full max-w-4xl">
-      <Card className="rounded-lg border-blue-100" styles={{ body: { padding: 16 } }}>
-        <Title level={4} className="!mb-2 !text-blue-700">
-          我的发布
-        </Title>
-        <Paragraph className="!mb-0 !text-blue-900/70">
-          发布信息提交成功后，会在对应分组新增一条“待审核”记录。
-        </Paragraph>
+    <Flex vertical gap={12} align="center" className="w-full">
+      <Card className="w-full max-w-5xl rounded-lg border-blue-100" styles={{ body: { padding: 12 } }}>
+        <Flex vertical gap={12}>
+          <Segmented
+            block
+            value={activeTab}
+            options={[
+              {
+                label: `失物 ${lostRecords.length}`,
+                value: '失物',
+              },
+              {
+                label: `招领 ${foundRecords.length}`,
+                value: '招领',
+              },
+            ]}
+            onChange={value => setActiveTab(value as PostTypeTab)}
+          />
+
+          {!currentRecords.length && (
+            <Empty description={`暂无${activeTab}记录`} />
+          )}
+
+          {!!currentRecords.length && (
+            <Flex vertical gap={10}>
+              {groupedRecords.map(group => (
+                <StatusSection
+                  key={group.status}
+                  status={group.status}
+                  records={group.records}
+                  onEdit={record => setEditorState({ mode: 'edit', record })}
+                  onDelete={handleDelete}
+                  onSupplement={record => setEditorState({ mode: 'supplement', record })}
+                  onCancelPublish={handleCancelPublish}
+                />
+              ))}
+            </Flex>
+          )}
+        </Flex>
       </Card>
 
-      <Card className="rounded-lg border-blue-100" styles={{ body: { padding: 12 } }}>
-        <Tabs
-          items={[
-            {
-              key: 'lost',
-              label: `失物（找回）${lostRecords.length ? ` ${lostRecords.length}` : ''}`,
-              children: (
-                <PendingList
-                  records={lostRecords}
-                  emptyText="暂无失物待审核记录"
-                />
-              ),
-            },
-            {
-              key: 'found',
-              label: `招领（归还）${foundRecords.length ? ` ${foundRecords.length}` : ''}`,
-              children: (
-                <PendingList
-                  records={foundRecords}
-                  emptyText="暂无招领待审核记录"
-                />
-              ),
-            },
-          ]}
-        />
-      </Card>
+      <RecordEditorModal
+        open={!!editorState}
+        mode={editorState?.mode ?? 'edit'}
+        record={editorState?.record}
+        onCancel={() => setEditorState(null)}
+        onSubmit={handleEditorSubmit}
+      />
     </Flex>
   )
 }

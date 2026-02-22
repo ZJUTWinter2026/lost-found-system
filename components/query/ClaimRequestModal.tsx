@@ -3,11 +3,12 @@
 import type { UploadFile, UploadProps } from 'antd'
 import type { ClaimAction, LostFoundItem } from './types'
 import { UploadOutlined } from '@ant-design/icons'
-import { Button, Flex, Input, message, Modal, Upload } from 'antd'
+import { Button, Flex, Input, message, Modal, Segmented, Typography, Upload } from 'antd'
 import { useState } from 'react'
 import { useLostFoundStore } from '@/stores/lostFoundStore'
 
 const { TextArea } = Input
+const { Text } = Typography
 
 interface ClaimRequestModalProps {
   open: boolean
@@ -66,25 +67,18 @@ function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
       width={640}
     >
       <Flex vertical gap={14}>
-        <Flex align="center" gap={8}>
-          <Button
-            type={action === '归还' ? 'primary' : 'default'}
-            onClick={() => setAction('归还')}
-            className="rounded-lg"
-          >
-            归还
-          </Button>
-          <Button
-            type={action === '找回' ? 'primary' : 'default'}
-            onClick={() => setAction('找回')}
-            className="rounded-lg"
-          >
-            找回
-          </Button>
-        </Flex>
+        <Segmented
+          block
+          value={action}
+          options={[
+            { label: '归还', value: '归还' },
+            { label: '找回', value: '找回' },
+          ]}
+          onChange={value => setAction(value as ClaimAction)}
+        />
 
         <Flex vertical gap={8}>
-          <div className="text-sm text-blue-900">物品额外特征或相关证明</div>
+          <Text className="text-sm text-blue-900">物品额外特征或相关证明</Text>
           <TextArea
             value={description}
             onChange={event => setDescription(event.target.value)}
@@ -95,11 +89,11 @@ function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
         </Flex>
 
         <Flex justify="end">
-          <span className="text-xs text-blue-900/50">{`${description.length} / 500`}</span>
+          <Text className="text-xs text-blue-900/50">{`${description.length} / 500`}</Text>
         </Flex>
 
         <Flex vertical gap={8}>
-          <div className="text-sm text-blue-900">提交照片（最多3张）</div>
+          <Text className="text-sm text-blue-900">提交照片（最多3张）</Text>
           <Upload
             listType="picture-card"
             accept="image/*"
@@ -112,7 +106,7 @@ function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
               : (
                   <Flex vertical align="center" gap={4}>
                     <UploadOutlined />
-                    <span className="text-xs">上传图片</span>
+                    <Text className="text-xs">上传图片</Text>
                   </Flex>
                 )}
           </Upload>

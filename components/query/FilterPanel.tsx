@@ -1,7 +1,7 @@
 'use client'
 
 import type { QueryFilters } from './types'
-import { Button, Card, Flex, Input, message, Modal, Select } from 'antd'
+import { Button, Card, Flex, Input, message, Modal, Select, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import {
   ITEM_TYPE_OPTIONS,
@@ -12,10 +12,18 @@ import {
   TIME_RANGE_OPTIONS,
 } from './constants'
 
+const { Text } = Typography
+
 interface FilterPanelProps {
   filters: QueryFilters
   onFiltersChange: (nextFilters: QueryFilters) => void
   onView: () => void
+}
+
+function FilterLabel({ text }: { text: string }) {
+  return (
+    <Text className="text-sm font-medium text-blue-900">{text}</Text>
+  )
 }
 
 function FilterPanel({
@@ -94,7 +102,7 @@ function FilterPanel({
         <Flex vertical gap={10}>
           <Flex align="end" gap={8} wrap>
             <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
-              <div className="text-sm font-medium text-blue-900">物品类型</div>
+              <FilterLabel text="物品类型" />
               <Select
                 value={filters.itemType}
                 allowClear
@@ -105,7 +113,7 @@ function FilterPanel({
             </Flex>
 
             <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
-              <div className="text-sm font-medium text-blue-900">丢失/拾取地点</div>
+              <FilterLabel text="丢失/拾取地点" />
               <Select
                 value={filters.location}
                 allowClear
@@ -116,7 +124,7 @@ function FilterPanel({
             </Flex>
 
             <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
-              <div className="text-sm font-medium text-blue-900">时间范围</div>
+              <FilterLabel text="时间范围" />
               <Select
                 value={filters.timeRange}
                 allowClear
@@ -127,7 +135,7 @@ function FilterPanel({
             </Flex>
 
             <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
-              <div className="text-sm font-medium text-blue-900">物品状态</div>
+              <FilterLabel text="物品状态" />
               <Select
                 value={filters.status}
                 allowClear
@@ -168,9 +176,9 @@ function FilterPanel({
             onChange={event => setOtherTypeInput(event.target.value)}
           />
           <Flex justify="end">
-            <span className="text-xs text-blue-900/50">
+            <Text className="text-xs text-blue-900/50">
               {`${otherTypeInput.length} / 15`}
-            </span>
+            </Text>
           </Flex>
         </Flex>
       </Modal>

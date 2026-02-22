@@ -1,8 +1,10 @@
 'use client'
 
 import type { FeedbackRecord } from '@/components/query/types'
-import { Empty, Flex, List, Tag } from 'antd'
+import { Card, Empty, Flex, List, Tag, Typography } from 'antd'
 import { formatDateTime } from '@/components/query/utils'
+
+const { Text } = Typography
 
 interface FeedbackHistoryListProps {
   records: FeedbackRecord[]
@@ -10,7 +12,11 @@ interface FeedbackHistoryListProps {
 
 function FeedbackHistoryList({ records }: FeedbackHistoryListProps) {
   return (
-    <div className="rounded-lg bg-blue-50 p-2">
+    <Card
+      size="small"
+      className="rounded-lg border-blue-100 bg-blue-50"
+      styles={{ body: { padding: 8 } }}
+    >
       {records.length
         ? (
             <List
@@ -19,7 +25,7 @@ function FeedbackHistoryList({ records }: FeedbackHistoryListProps) {
                 <List.Item className="!px-3 !py-3">
                   <Flex vertical gap={8} className="w-full">
                     <Flex align="center" justify="space-between" gap={10}>
-                      <span className="text-xs text-blue-900/60">{record.id}</span>
+                      <Text className="text-xs text-blue-900/60">{record.id}</Text>
                       <Tag
                         color={
                           record.status === '已处理'
@@ -32,19 +38,19 @@ function FeedbackHistoryList({ records }: FeedbackHistoryListProps) {
                         {record.status}
                       </Tag>
                     </Flex>
-                    <p className="text-sm text-blue-900">
+                    <Text className="text-sm text-blue-900">
                       {`类型：${record.types.join('、')}`}
-                    </p>
+                    </Text>
                     {record.description && (
-                      <p className="text-sm text-blue-900/80">{`说明：${record.description}`}</p>
+                      <Text className="text-sm text-blue-900/80">{`说明：${record.description}`}</Text>
                     )}
                     <Flex align="center" justify="space-between" gap={8}>
-                      <span className="text-xs text-blue-900/60">
+                      <Text className="text-xs text-blue-900/60">
                         {`来源：${record.source}`}
-                      </span>
-                      <span className="text-xs text-blue-900/60">
+                      </Text>
+                      <Text className="text-xs text-blue-900/60">
                         {formatDateTime(record.createdAt)}
-                      </span>
+                      </Text>
                     </Flex>
                   </Flex>
                 </List.Item>
@@ -54,7 +60,7 @@ function FeedbackHistoryList({ records }: FeedbackHistoryListProps) {
         : (
             <Empty description="暂无历史反馈" />
           )}
-    </div>
+    </Card>
   )
 }
 

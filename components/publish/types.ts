@@ -1,4 +1,4 @@
-import type { ItemPostType, ItemStatus, ReviewStatus, TimeRangeValue } from '@/components/query/types'
+import type { ItemPostType, ItemStatus, TimeRangeValue } from '@/components/query/types'
 
 export interface PublishFormValues {
   postType?: ItemPostType
@@ -47,8 +47,25 @@ export interface SubmitPublishPayload {
   photos: string[]
 }
 
+export type PublishReviewStatus = '待审核' | '已通过' | '已匹配' | '已认领' | '已驳回' | '已取消'
+
+export interface PublishEditablePayload {
+  itemType: string
+  location: string
+  itemName: string
+  occurredAt: string
+  features: string
+  contactName: string
+  contactPhone: string
+  hasReward: boolean
+  rewardRemark?: string
+  photos: string[]
+}
+
 export interface PublishRecord extends SubmitPublishPayload {
   id: string
   createdAt: string
-  reviewStatus: ReviewStatus
+  reviewStatus: PublishReviewStatus
+  rejectReason?: string
+  updatedAt?: string
 }

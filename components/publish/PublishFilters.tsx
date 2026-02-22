@@ -1,5 +1,7 @@
 import type { ItemStatus, TimeRangeValue } from '@/components/query/types'
-import { Flex, Select } from 'antd'
+import { Flex, Select, Typography } from 'antd'
+
+const { Text } = Typography
 
 interface Option {
   label: string
@@ -23,10 +25,10 @@ interface PublishFiltersProps {
 
 function Label({ text }: { text: string }) {
   return (
-    <div className="text-sm font-medium text-blue-900">
-      <span className="mr-1 text-red-500">*</span>
-      {text}
-    </div>
+    <Flex align="center" gap={4}>
+      <Text className="text-red-500">*</Text>
+      <Text className="text-sm font-medium text-blue-900">{text}</Text>
+    </Flex>
   )
 }
 

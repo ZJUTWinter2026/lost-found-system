@@ -54,12 +54,10 @@ export const TIME_RANGE_HOUR_MAP: Record<TimeRangeValue, number> = {
 export const FEEDBACK_TYPE_OTHER_VALUE = '__other_feedback_type__'
 
 export const FEEDBACK_TYPE_OPTIONS = [
-  { label: '物品信息不实/疑似虚假', value: '物品信息不实/疑似虚假' },
-  { label: '认领凭证争议', value: '认领凭证争议' },
-  { label: '处理进度慢', value: '处理进度慢' },
-  { label: '沟通态度或骚扰问题', value: '沟通态度或骚扰问题' },
-  { label: '隐私或安全问题', value: '隐私或安全问题' },
-  { label: '系统功能异常', value: '系统功能异常' },
+  { label: '信息不全', value: '信息不全' },
+  { label: '不实消息', value: '不实消息' },
+  { label: '恶心血腥', value: '恶心血腥' },
+  { label: '涉黄信息', value: '涉黄信息' },
   { label: '其它类型', value: FEEDBACK_TYPE_OTHER_VALUE },
 ]
 
@@ -263,16 +261,16 @@ export const MOCK_LOST_FOUND_ITEMS: LostFoundItem[] = [
 export const INITIAL_FEEDBACK_RECORDS: FeedbackRecord[] = [
   {
     id: 'FDBK-20260215-01',
-    types: ['功能建议'],
-    description: '希望查询页能支持更多筛选维度。',
+    types: ['信息不全'],
+    description: '物品描述缺少关键特征，建议补充可识别信息。',
     createdAt: toIsoByHoursAgo(144),
     status: '处理中',
     source: '意见箱',
   },
   {
     id: 'FDBK-20260211-02',
-    types: ['界面体验'],
-    description: '移动端顶部按钮再放大一些会更好。',
+    types: ['不实消息'],
+    description: '该条信息与现场情况不符，建议管理员复核。',
     createdAt: toIsoByHoursAgo(240),
     status: '已处理',
     source: '反馈页',

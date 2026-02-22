@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, Checkbox, Flex, Input, message, Typography } from 'antd'
+import { Button, Card, Checkbox, Flex, Input, message, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import {
   FEEDBACK_TYPE_OPTIONS,
@@ -132,46 +132,63 @@ function FeedbackSubmitForm({
           <Text className="text-red-500">*</Text>
         </Flex>
         <Text className="text-xs text-blue-900/60">
-          请选择最接近的问题类型，例如信息不实、认领争议、处理进度慢等。
+          请勾选投诉与反馈类型，至少选择一项。
         </Text>
         <Checkbox.Group
           value={selectedTypes}
-          options={FEEDBACK_TYPE_OPTIONS}
           onChange={values => handleTypeChange(values as string[])}
-        />
+          className="w-full"
+        >
+          <Flex vertical gap={10}>
+            {FEEDBACK_TYPE_OPTIONS.map(option => (
+              <Checkbox key={option.value} value={option.value}>
+                {option.label}
+              </Checkbox>
+            ))}
+          </Flex>
+        </Checkbox.Group>
       </Flex>
 
       {hasSelectedOtherType && (
-        <Flex vertical gap={8} className="rounded-lg bg-blue-50 p-3">
-          <Input
-            value={otherTypeInput}
-            onChange={event => handleOtherTypeInputChange(event.target.value)}
-            placeholder="请输入其它类型（最多15字）"
-            maxLength={15}
-          />
-          <Flex justify="end">
-            <Text className="text-xs text-blue-900/50">
-              {`${otherTypeInput.length} / 15`}
-            </Text>
+        <Card
+          size="small"
+          className="rounded-lg border-blue-100"
+          styles={{ body: { padding: 10, backgroundColor: '#eff6ff' } }}
+        >
+          <Flex vertical gap={8}>
+            <Flex align="center" justify="space-between" gap={8}>
+              <Text className="text-sm text-blue-900">其它类型说明</Text>
+              <Text className="text-xs text-blue-900/50">
+                {`${otherTypeInput.length} / 15`}
+              </Text>
+            </Flex>
+            <Input
+              value={otherTypeInput}
+              onChange={event => handleOtherTypeInputChange(event.target.value)}
+              placeholder="请输入其它类型（最多15字）"
+              maxLength={15}
+            />
+            <Flex align="center" justify="space-between" gap={8} wrap>
+              {isOtherTypeConfirmed
+                ? (
+                    <Text className="text-xs text-blue-700">
+                      {`已确认其它类型：${confirmedOtherType}`}
+                    </Text>
+                  )
+                : (
+                    <Text className="text-xs text-blue-900/60">
+                      请输入后点击“确认”，否则无法提交
+                    </Text>
+                  )}
+              <Flex gap={8}>
+                <Button onClick={handleOtherTypeCancel}>取消</Button>
+                <Button type="primary" onClick={handleOtherTypeConfirm}>
+                  确认
+                </Button>
+              </Flex>
+            </Flex>
           </Flex>
-          <Flex justify="end" gap={8}>
-            <Button onClick={handleOtherTypeCancel}>取消</Button>
-            <Button type="primary" onClick={handleOtherTypeConfirm}>
-              确认
-            </Button>
-          </Flex>
-          {isOtherTypeConfirmed
-            ? (
-                <Text className="text-xs text-blue-700">
-                  {`已确认其它类型：${confirmedOtherType}`}
-                </Text>
-              )
-            : (
-                <Text className="text-xs text-blue-900/60">
-                  请输入后点击“确认”，否则无法提交
-                </Text>
-              )}
-        </Flex>
+        </Card>
       )}
 
       <Flex vertical gap={8}>

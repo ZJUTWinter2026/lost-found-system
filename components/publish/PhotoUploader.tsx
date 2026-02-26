@@ -1,6 +1,9 @@
+'use client'
+
 import type { UploadProps } from 'antd'
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons'
 import { Button, Card, Flex, Image, message, Upload } from 'antd'
+import { useUploadImagesMutation } from '@/hooks/queries/useUserAuthMutations'
 
 interface PhotoUploaderProps {
   photos: string[]
@@ -8,16 +11,9 @@ interface PhotoUploaderProps {
   onChange: (nextPhotos: string[]) => void
 }
 
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result ?? ''))
-    reader.onerror = () => reject(new Error('图片读取失败'))
-    reader.readAsDataURL(file)
-  })
-}
-
 function PhotoUploader({ photos, maxCount = 3, onChange }: PhotoUploaderProps) {
+  const uploadImagesMutation = useUploadImagesMutation()
+
   const handleBeforeUpload: UploadProps['beforeUpload'] = async (file) => {
     if (!file.type.startsWith('image/')) {
       message.warning('仅支持上传图片文件')
@@ -29,12 +25,22 @@ function PhotoUploader({ photos, maxCount = 3, onChange }: PhotoUploaderProps) {
       return Upload.LIST_IGNORE
     }
 
-    try {
-      const dataUrl = await fileToDataUrl(file as File)
-      onChange([...photos, dataUrl])
+    if (!(file instanceof File)) {
+      message.error('图片文件无效，请重试')
+      return Upload.LIST_IGNORE
     }
-    catch {
-      message.error('图片处理失败，请重试')
+
+    try {
+      const urls = await uploadImagesMutation.mutateAsync([file])
+      if (!urls.length) {
+        message.error('图片上传失败，请重试')
+        return Upload.LIST_IGNORE
+      }
+
+      onChange([...photos, urls[0]])
+    }
+    catch (error) {
+      message.error(error instanceof Error ? error.message : '图片上传失败，请重试')
     }
 
     return Upload.LIST_IGNORE
@@ -55,9 +61,9 @@ function PhotoUploader({ photos, maxCount = 3, onChange }: PhotoUploaderProps) {
         <Button
           icon={<UploadOutlined />}
           className="rounded-lg"
-          disabled={photos.length >= maxCount}
+          disabled={photos.length >= maxCount || uploadImagesMutation.isPending}
         >
-          上传图片
+          {uploadImagesMutation.isPending ? '上传中...' : '上传图片'}
         </Button>
       </Upload>
 

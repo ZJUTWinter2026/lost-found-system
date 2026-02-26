@@ -1,11 +1,10 @@
 'use client'
 
-import type { UploadFile, UploadProps } from 'antd'
 import type { ClaimAction, LostFoundItem } from './types'
-import { UploadOutlined } from '@ant-design/icons'
-import { Button, Flex, Input, message, Modal, Segmented, Typography, Upload } from 'antd'
+import { Button, Flex, Input, message, Modal, Segmented, Typography } from 'antd'
 import { useState } from 'react'
-import { useLostFoundStore } from '@/stores/lostFoundStore'
+import PhotoUploader from '@/components/publish/PhotoUploader'
+import { useSubmitClaimMutation } from '@/hooks/queries/useLostFoundQueries'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -21,47 +20,44 @@ function getDefaultAction(postType: LostFoundItem['postType']): ClaimAction {
 }
 
 function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
-  const submitClaim = useLostFoundStore(state => state.submitClaim)
+  const submitClaimMutation = useSubmitClaimMutation()
   const [action, setAction] = useState<ClaimAction>(() => getDefaultAction(item.postType))
   const [description, setDescription] = useState('')
-  const [fileList, setFileList] = useState<UploadFile[]>([])
+  const [photos, setPhotos] = useState<string[]>([])
 
-  const handleUploadBefore: UploadProps['beforeUpload'] = () => {
-    if (fileList.length >= 3) {
-      message.warning('最多提交3张照片')
-      return Upload.LIST_IGNORE
-    }
-    return false
+  const handleClose = () => {
+    setAction(getDefaultAction(item.postType))
+    setDescription('')
+    setPhotos([])
+    onClose()
   }
 
-  const handleUploadChange: UploadProps['onChange'] = (info) => {
-    if (info.fileList.length > 3)
-      message.warning('最多提交3张照片')
-
-    setFileList(info.fileList.slice(0, 3))
-  }
-
-  const handleSubmit = () => {
-    const isSubmitted = submitClaim({
-      itemId: item.id,
-      action,
-      detail: description,
-      photos: fileList.map(file => file.name),
-    })
-    if (!isSubmitted) {
-      message.error('提交失败，请稍后重试')
+  const handleSubmit = async () => {
+    if (!description.trim()) {
+      message.warning('请填写补充说明')
       return
     }
 
-    message.success('认领申请已提交，等待管理员审核')
-    onClose()
+    try {
+      await submitClaimMutation.mutateAsync({
+        itemId: item.id,
+        action,
+        detail: description,
+        photos: photos.slice(0, 3),
+      })
+      message.success('认领申请已提交，等待管理员审核')
+      handleClose()
+    }
+    catch (error) {
+      message.error(error instanceof Error ? error.message : '提交失败，请稍后重试')
+    }
   }
 
   return (
     <Modal
       title="认领与沟通"
       open={open}
-      onCancel={onClose}
+      onCancel={handleClose}
       footer={null}
       destroyOnHidden
       width={640}
@@ -94,27 +90,19 @@ function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
 
         <Flex vertical gap={8}>
           <Text className="text-sm text-blue-900">提交照片（最多3张）</Text>
-          <Upload
-            listType="picture-card"
-            accept="image/*"
-            fileList={fileList}
-            beforeUpload={handleUploadBefore}
-            onChange={handleUploadChange}
-          >
-            {fileList.length >= 3
-              ? null
-              : (
-                  <Flex vertical align="center" gap={4}>
-                    <UploadOutlined />
-                    <Text className="text-xs">上传图片</Text>
-                  </Flex>
-                )}
-          </Upload>
+          <PhotoUploader photos={photos} onChange={setPhotos} />
         </Flex>
 
         <Flex justify="end" gap={8}>
-          <Button onClick={onClose}>取消</Button>
-          <Button type="primary" onClick={handleSubmit} className="rounded-lg">
+          <Button onClick={handleClose}>取消</Button>
+          <Button
+            type="primary"
+            onClick={() => {
+              void handleSubmit()
+            }}
+            className="rounded-lg"
+            loading={submitClaimMutation.isPending}
+          >
             确认
           </Button>
         </Flex>

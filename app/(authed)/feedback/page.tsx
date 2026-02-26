@@ -3,13 +3,13 @@
 import { Card, Flex, message, Typography } from 'antd'
 import FeedbackHistoryList from '@/components/feedback/FeedbackHistoryList'
 import FeedbackSubmitForm from '@/components/feedback/FeedbackSubmitForm'
-import { useLostFoundStore } from '@/stores/lostFoundStore'
+import { useFeedbackRecordsQuery, useSubmitFeedbackMutation } from '@/hooks/queries/useFeedbackQueries'
 
 const { Paragraph, Title } = Typography
 
 function FeedbackPage() {
-  const feedbackRecords = useLostFoundStore(state => state.feedbackRecords)
-  const submitFeedback = useLostFoundStore(state => state.submitFeedback)
+  const feedbackRecordsQuery = useFeedbackRecordsQuery({ page: 1, page_size: 20 })
+  const submitFeedbackMutation = useSubmitFeedbackMutation()
 
   return (
     <Flex vertical gap={12} className="mx-auto w-full max-w-4xl">
@@ -29,14 +29,21 @@ function FeedbackPage() {
       >
         <FeedbackSubmitForm
           submitText="确认提交"
-          onSubmit={(payload) => {
-            submitFeedback({
-              types: payload.types,
-              description: payload.description,
-              source: '反馈页',
-            })
-            message.success('投诉与反馈已提交，等待管理员审核')
-            return true
+          submitting={submitFeedbackMutation.isPending}
+          onSubmit={async (payload) => {
+            try {
+              await submitFeedbackMutation.mutateAsync({
+                types: payload.types,
+                description: payload.description,
+                source: '反馈页',
+              })
+              message.success('投诉与反馈已提交，等待管理员审核')
+              return true
+            }
+            catch (error) {
+              message.error(error instanceof Error ? error.message : '提交失败，请稍后重试')
+              return false
+            }
           }}
         />
       </Card>
@@ -46,7 +53,7 @@ function FeedbackPage() {
         className="rounded-lg border-blue-100"
         styles={{ body: { padding: 12 } }}
       >
-        <FeedbackHistoryList records={feedbackRecords} />
+        <FeedbackHistoryList records={feedbackRecordsQuery.data || []} />
       </Card>
     </Flex>
   )

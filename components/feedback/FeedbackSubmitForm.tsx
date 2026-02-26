@@ -11,15 +11,17 @@ const { TextArea } = Input
 const { Text } = Typography
 
 interface FeedbackSubmitFormProps {
-  onSubmit: (payload: { types: string[], description: string }) => boolean | void
+  onSubmit: (payload: { types: string[], description: string }) => Promise<boolean | void> | boolean | void
   onCancel?: () => void
   submitText?: string
+  submitting?: boolean
 }
 
 function FeedbackSubmitForm({
   onSubmit,
   onCancel,
   submitText = '确认',
+  submitting = false,
 }: FeedbackSubmitFormProps) {
   const [selectedTypes, setSelectedTypes] = useState<string[]>([])
   const [otherTypeInput, setOtherTypeInput] = useState('')
@@ -101,13 +103,13 @@ function FeedbackSubmitForm({
     setConfirmedOtherType('')
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) {
       message.warning('请至少勾选一种投诉与反馈类型')
       return
     }
 
-    const isSuccess = onSubmit({
+    const isSuccess = await onSubmit({
       types: resolvedTypeList,
       description: feedbackDescription.trim(),
     })
@@ -212,9 +214,12 @@ function FeedbackSubmitForm({
         {onCancel && <Button onClick={handleCancel}>取消</Button>}
         <Button
           type="primary"
-          onClick={handleSubmit}
+          onClick={() => {
+            void handleSubmit()
+          }}
           className="rounded-lg"
-          disabled={!canSubmit}
+          disabled={!canSubmit || submitting}
+          loading={submitting}
         >
           {submitText}
         </Button>

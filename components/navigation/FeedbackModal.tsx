@@ -4,7 +4,7 @@ import { message, Modal, Tabs } from 'antd'
 import { useState } from 'react'
 import FeedbackHistoryList from '@/components/feedback/FeedbackHistoryList'
 import FeedbackSubmitForm from '@/components/feedback/FeedbackSubmitForm'
-import { useLostFoundStore } from '@/stores/lostFoundStore'
+import { useFeedbackRecordsQuery, useSubmitFeedbackMutation } from '@/hooks/queries/useFeedbackQueries'
 
 interface FeedbackModalProps {
   open: boolean
@@ -12,8 +12,8 @@ interface FeedbackModalProps {
 }
 
 function FeedbackModal({ open, onClose }: FeedbackModalProps) {
-  const feedbackRecords = useLostFoundStore(state => state.feedbackRecords)
-  const submitFeedback = useLostFoundStore(state => state.submitFeedback)
+  const feedbackRecordsQuery = useFeedbackRecordsQuery({ page: 1, page_size: 20 }, open)
+  const submitFeedbackMutation = useSubmitFeedbackMutation()
   const [activeKey, setActiveKey] = useState('submit')
 
   const handleClose = () => {
@@ -42,15 +42,22 @@ function FeedbackModal({ open, onClose }: FeedbackModalProps) {
             children: (
               <FeedbackSubmitForm
                 onCancel={handleClose}
-                onSubmit={(payload) => {
-                  submitFeedback({
-                    types: payload.types,
-                    description: payload.description,
-                    source: '意见箱',
-                  })
-                  message.success('投诉与反馈已提交，等待管理员审核')
-                  setActiveKey('history')
-                  return true
+                submitting={submitFeedbackMutation.isPending}
+                onSubmit={async (payload) => {
+                  try {
+                    await submitFeedbackMutation.mutateAsync({
+                      types: payload.types,
+                      description: payload.description,
+                      source: '意见箱',
+                    })
+                    message.success('投诉与反馈已提交，等待管理员审核')
+                    setActiveKey('history')
+                    return true
+                  }
+                  catch (error) {
+                    message.error(error instanceof Error ? error.message : '提交失败，请稍后重试')
+                    return false
+                  }
                 }}
               />
             ),
@@ -58,7 +65,7 @@ function FeedbackModal({ open, onClose }: FeedbackModalProps) {
           {
             key: 'history',
             label: '历史记录',
-            children: <FeedbackHistoryList records={feedbackRecords} />,
+            children: <FeedbackHistoryList records={feedbackRecordsQuery.data || []} />,
           },
         ]}
       />

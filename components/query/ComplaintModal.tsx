@@ -2,7 +2,7 @@
 
 import { Button, Card, Flex, Input, message, Modal, Radio, Typography } from 'antd'
 import { useMemo, useState } from 'react'
-import { useLostFoundStore } from '@/stores/lostFoundStore'
+import { useSubmitFeedbackMutation } from '@/hooks/queries/useFeedbackQueries'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -19,11 +19,12 @@ const COMPLAINT_TYPE_OPTIONS = [
 
 interface ComplaintModalProps {
   open: boolean
+  itemId: string
   onClose: () => void
 }
 
-function ComplaintModal({ open, onClose }: ComplaintModalProps) {
-  const submitFeedback = useLostFoundStore(state => state.submitFeedback)
+function ComplaintModal({ open, itemId, onClose }: ComplaintModalProps) {
+  const submitFeedbackMutation = useSubmitFeedbackMutation()
   const [selectedType, setSelectedType] = useState('')
   const [customType, setCustomType] = useState('')
   const [description, setDescription] = useState('')
@@ -57,7 +58,7 @@ function ComplaintModal({ open, onClose }: ComplaintModalProps) {
       setCustomType('')
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedType) {
       message.warning('请选择投诉类型')
       return
@@ -68,19 +69,19 @@ function ComplaintModal({ open, onClose }: ComplaintModalProps) {
       return
     }
 
-    const isSubmitted = submitFeedback({
-      types: [resolvedType],
-      description: description.trim(),
-      source: '物品详情',
-    })
-
-    if (!isSubmitted) {
-      message.error('提交失败，请稍后重试')
-      return
+    try {
+      await submitFeedbackMutation.mutateAsync({
+        types: [resolvedType],
+        description: description.trim(),
+        source: '物品详情',
+        postId: itemId,
+      })
+      message.success('投诉与反馈已提交，等待管理员审核')
+      handleClose()
     }
-
-    message.success('投诉与反馈已提交，等待管理员审核')
-    handleClose()
+    catch (error) {
+      message.error(error instanceof Error ? error.message : '提交失败，请稍后重试')
+    }
   }
 
   return (
@@ -153,9 +154,12 @@ function ComplaintModal({ open, onClose }: ComplaintModalProps) {
           <Button onClick={handleClose}>取消</Button>
           <Button
             type="primary"
-            onClick={handleSubmit}
+            onClick={() => {
+              void handleSubmit()
+            }}
             className="rounded-lg"
             disabled={!canSubmit}
+            loading={submitFeedbackMutation.isPending}
           >
             确认提交
           </Button>

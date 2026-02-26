@@ -5,6 +5,8 @@ import { ExclamationCircleFilled } from '@ant-design/icons'
 import { Button, Flex, message, Modal, Typography } from 'antd'
 import { usePathname, useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import { clearLoginSession } from '@/utils/auth'
+import AnnouncementModal from './AnnouncementModal'
 import FeedbackModal from './FeedbackModal'
 
 const { Title } = Typography
@@ -21,6 +23,7 @@ function TopNav() {
   const router = useRouter()
   const pathname = usePathname()
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [announcementOpen, setAnnouncementOpen] = useState(false)
 
   const activeNav = useMemo(
     () => NAV_ITEMS.find(item => pathname.startsWith(item.path))?.key ?? null,
@@ -36,6 +39,7 @@ function TopNav() {
       okType: 'danger',
       icon: <ExclamationCircleFilled />,
       onOk: () => {
+        clearLoginSession()
         message.success('已退出登录（演示）')
         router.push('/login')
       },
@@ -79,6 +83,14 @@ function TopNav() {
           <Button
             type="text"
             size="large"
+            onClick={() => setAnnouncementOpen(true)}
+            className={ACTION_BUTTON_CLASSNAME}
+          >
+            系统公告
+          </Button>
+          <Button
+            type="text"
+            size="large"
             onClick={() => setFeedbackOpen(true)}
             className={ACTION_BUTTON_CLASSNAME}
           >
@@ -94,6 +106,11 @@ function TopNav() {
           </Button>
         </Flex>
       </Flex>
+
+      <AnnouncementModal
+        open={announcementOpen}
+        onClose={() => setAnnouncementOpen(false)}
+      />
 
       <FeedbackModal
         open={feedbackOpen}

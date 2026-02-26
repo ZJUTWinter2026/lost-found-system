@@ -1,6 +1,7 @@
 'use client'
 
-import type { PublishDraft, PublishFormValues, SubmitPublishPayload } from '@/components/publish/types'
+import type { PostCampus, PostPublishType } from '@/api/modules/lostFound'
+import type { PublishDraft, PublishFormValues } from '@/components/publish/types'
 import type { ItemPostType, ItemStatus, TimeRangeValue } from '@/components/query/types'
 import { Alert, Button, Card, Flex, Form, Input, message, Modal, Radio, Typography } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
@@ -11,18 +12,19 @@ import PublishFilters from '@/components/publish/PublishFilters'
 import PublishTypeSwitch from '@/components/publish/PublishTypeSwitch'
 import {
   ITEM_TYPE_OPTIONS,
-  ITEM_TYPE_OPTIONS_WITH_OTHER,
   ITEM_TYPE_OTHER_VALUE,
   LOCATION_OPTIONS,
   STATUS_OPTIONS,
   TIME_RANGE_OPTIONS,
 } from '@/components/query/constants'
-import { useLostFoundStore } from '@/stores/lostFoundStore'
+import { usePublicConfigQuery } from '@/hooks/queries/usePublicQueries'
+import { usePublishPostMutation } from '@/hooks/queries/useUserPostQueries'
 
 const { Text } = Typography
 const { TextArea } = Input
 
 const DRAFT_RESTORED_MESSAGE_KEY = 'publish-draft-restored'
+const DEFAULT_CAMPUS: PostCampus = 'PING_FENG'
 const VALID_POST_TYPES = new Set<ItemPostType>(['失物', '招领'])
 const VALID_TIME_RANGE = new Set<TimeRangeValue>(TIME_RANGE_OPTIONS.map(option => option.value))
 const VALID_STATUS = new Set<ItemStatus>(STATUS_OPTIONS.map(option => option.value))
@@ -56,6 +58,31 @@ function toIsoDateText(value?: string) {
 
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString()
+}
+
+function toPostPublishType(postType: ItemPostType): PostPublishType {
+  return postType === '招领' ? 'FOUND' : 'LOST'
+}
+
+function resolveItemTypeFields(itemTypeValue: string, presetTypes: string[]) {
+  const normalized = itemTypeValue.trim()
+  const isPresetType = presetTypes.includes(normalized)
+
+  if (isPresetType) {
+    return {
+      item_type: normalized,
+      item_type_other: '',
+    }
+  }
+
+  return {
+    item_type: '其它',
+    item_type_other: normalized,
+  }
+}
+
+function isFormValidationError(error: unknown): error is { errorFields: unknown[] } {
+  return typeof error === 'object' && error !== null && 'errorFields' in error
 }
 
 function toOptionalPostType(value: unknown) {
@@ -167,7 +194,8 @@ function isDraftEmpty(draft: PublishDraft) {
 
 function PublishPage() {
   const [form] = Form.useForm<PublishFormValues>()
-  const submitPublish = useLostFoundStore(state => state.submitPublish)
+  const publishPostMutation = usePublishPostMutation()
+  const publicConfigQuery = usePublicConfigQuery()
 
   const [otherTypeOpen, setOtherTypeOpen] = useState(false)
   const [otherTypeInput, setOtherTypeInput] = useState('')
@@ -184,20 +212,39 @@ function PublishPage() {
   const timeRange = Form.useWatch('timeRange', form)
   const status = Form.useWatch('status', form)
 
+  const baseItemTypeOptions = useMemo(() => {
+    const itemTypes = (publicConfigQuery.data?.itemTypes || [])
+      .map(type => type.trim())
+      .filter(Boolean)
+    if (!itemTypes.length)
+      return ITEM_TYPE_OPTIONS
+
+    return itemTypes.map(type => ({
+      label: type,
+      value: type,
+    }))
+  }, [publicConfigQuery.data?.itemTypes])
+
+  const baseItemTypeValues = useMemo(
+    () => baseItemTypeOptions.map(option => option.value),
+    [baseItemTypeOptions],
+  )
+
   const hasCustomItemType = useMemo(
-    () => !!itemType && !ITEM_TYPE_OPTIONS.some(option => option.value === itemType),
-    [itemType],
+    () => !!itemType && !baseItemTypeOptions.some(option => option.value === itemType),
+    [baseItemTypeOptions, itemType],
   )
 
   const itemTypeOptions = useMemo(() => {
     if (!hasCustomItemType || !itemType)
-      return ITEM_TYPE_OPTIONS_WITH_OTHER
+      return [...baseItemTypeOptions, { label: '其它', value: ITEM_TYPE_OTHER_VALUE }]
 
     return [
       { label: `其它：${itemType}`, value: itemType },
-      ...ITEM_TYPE_OPTIONS_WITH_OTHER,
+      ...baseItemTypeOptions,
+      { label: '其它', value: ITEM_TYPE_OTHER_VALUE },
     ]
-  }, [hasCustomItemType, itemType])
+  }, [baseItemTypeOptions, hasCustomItemType, itemType])
 
   useEffect(() => {
     const draft = readDraft()
@@ -302,27 +349,25 @@ function PublishPage() {
       }
 
       setSubmitting(true)
-      const payload: SubmitPublishPayload = {
-        postType: values.postType as ItemPostType,
-        itemType: (values.itemType ?? '').trim(),
-        location: (values.location ?? '').trim(),
-        timeRange: values.timeRange as TimeRangeValue,
-        status: values.status as ItemStatus,
-        itemName: (values.itemName ?? '').trim(),
-        occurredAt: toIsoDateText(values.occurredAt),
-        features: (values.features ?? '').trim(),
-        contactName: (values.contactName ?? '').trim(),
-        contactPhone: (values.contactPhone ?? '').trim(),
-        hasReward: !!values.hasReward,
-        rewardRemark: values.rewardRemark?.trim() || undefined,
-        photos: photos.slice(0, 3),
-      }
+      const itemTypeValue = (values.itemType ?? '').trim()
+      const itemTypeFields = resolveItemTypeFields(itemTypeValue, baseItemTypeValues)
+      const resolvedPostType = values.postType as ItemPostType
 
-      const ok = submitPublish(payload)
-      if (!ok) {
-        message.error('提交失败，请稍后重试')
-        return
-      }
+      await publishPostMutation.mutateAsync({
+        publish_type: toPostPublishType(resolvedPostType),
+        item_name: (values.itemName ?? '').trim(),
+        item_type: itemTypeFields.item_type,
+        item_type_other: itemTypeFields.item_type_other,
+        campus: DEFAULT_CAMPUS,
+        location: (values.location ?? '').trim(),
+        storage_location: (values.location ?? '').trim(),
+        event_time: toIsoDateText(values.occurredAt),
+        features: (values.features ?? '').trim(),
+        contact_name: (values.contactName ?? '').trim(),
+        contact_phone: (values.contactPhone ?? '').trim(),
+        has_reward: !!values.hasReward,
+        images: photos.slice(0, 3),
+      })
 
       message.success('已提交信息，等待审核中...')
       setSubmitted(true)
@@ -330,8 +375,13 @@ function PublishPage() {
       setPhotos([])
       clearDraft()
     }
-    catch {
-      message.warning('请先完善必填项并确认联系方式格式')
+    catch (error) {
+      if (isFormValidationError(error)) {
+        message.warning('请先完善必填项并确认联系方式格式')
+        return
+      }
+
+      message.error(error instanceof Error ? error.message : '提交失败，请稍后重试')
     }
     finally {
       setSubmitting(false)

@@ -1,14 +1,16 @@
 'use client'
 
+import type { LostFoundListParams, PostStatus } from '@/api/modules/lostFound'
 import type { ItemStatus, QueryFilters, TimeRangeValue } from '@/components/query/types'
-import { Card, Flex, Typography } from 'antd'
+import { Button, Card, Flex, Typography } from 'antd'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMemo, useRef, useState } from 'react'
-import { STATUS_OPTIONS, TIME_RANGE_OPTIONS } from '@/components/query/constants'
+import { mapPostListItemToLostFoundItem } from '@/api/modules/lostFound'
+import { STATUS_OPTIONS, TIME_RANGE_HOUR_MAP, TIME_RANGE_OPTIONS } from '@/components/query/constants'
 import FilterPanel from '@/components/query/FilterPanel'
 import ItemList from '@/components/query/ItemList'
-import { isWithinTimeRange, toTimestamp } from '@/components/query/utils'
-import { useLostFoundStore } from '@/stores/lostFoundStore'
+import { toTimestamp } from '@/components/query/utils'
+import { useLostFoundListQuery } from '@/hooks/queries/useLostFoundQueries'
 
 const { Paragraph, Title } = Typography
 
@@ -23,6 +25,32 @@ const VALID_TIME_RANGE = new Set<TimeRangeValue>(
 const VALID_STATUS = new Set<ItemStatus>(
   STATUS_OPTIONS.map(option => option.value),
 )
+
+const STATUS_TO_BACKEND_MAP: Record<ItemStatus, PostStatus> = {
+  寻找中: '1',
+  待认领: '1',
+  已归还: '2',
+}
+
+function buildListParams(filters: QueryFilters): LostFoundListParams {
+  const params: LostFoundListParams = {
+    item_type: filters.itemType?.trim() || undefined,
+    location: filters.location?.trim() || undefined,
+    status: filters.status ? STATUS_TO_BACKEND_MAP[filters.status] : undefined,
+    page: 1,
+    page_size: 20,
+  }
+
+  if (filters.timeRange) {
+    const hours = TIME_RANGE_HOUR_MAP[filters.timeRange]
+    const endTime = Date.now()
+    const startTime = endTime - hours * 60 * 60 * 1000
+    params.start_time = new Date(startTime).toISOString()
+    params.end_time = new Date(endTime).toISOString()
+  }
+
+  return params
+}
 
 function parseInitialState(searchParams: URLSearchParams): QueryPageState {
   const itemType = searchParams.get('itemType')?.trim()
@@ -74,26 +102,18 @@ function QueryPageClient() {
   const [filters, setFilters] = useState<QueryFilters>(initialRef.current.filters)
   const [hasViewed, setHasViewed] = useState(initialRef.current.hasViewed)
   const [hasSearchedOnce, setHasSearchedOnce] = useState(initialRef.current.hasViewed)
-  const items = useLostFoundStore(state => state.items)
-
-  const filteredItems = useMemo(() => {
-    const result = items
-      .filter((item) => {
-        if (filters.itemType && item.itemType !== filters.itemType)
-          return false
-        if (filters.location && item.location !== filters.location)
-          return false
-        if (filters.status && item.status !== filters.status)
-          return false
-        if (!isWithinTimeRange(item.occurredAt, filters.timeRange))
-          return false
-
-        return true
-      })
-      .sort((left, right) => toTimestamp(right.occurredAt) - toTimestamp(left.occurredAt))
-
-    return result
-  }, [filters.itemType, filters.location, filters.status, filters.timeRange, items])
+  const listParams = useMemo(
+    () => buildListParams(filters),
+    [filters],
+  )
+  const listQuery = useLostFoundListQuery(listParams, hasViewed)
+  const filteredItems = useMemo(
+    () =>
+      (listQuery.data?.list || [])
+        .map(mapPostListItemToLostFoundItem)
+        .sort((left, right) => toTimestamp(right.occurredAt) - toTimestamp(left.occurredAt)),
+    [listQuery.data?.list],
+  )
 
   const syncSearch = (nextFilters: QueryFilters, nextHasViewed: boolean) => {
     const searchText = buildSearchText(nextFilters, nextHasViewed)
@@ -140,10 +160,36 @@ function QueryPageClient() {
       />
 
       {hasViewed && (
-        <ItemList
-          items={filteredItems}
-          onSelectItem={handleSelectItem}
-        />
+        <>
+          {listQuery.isError && (
+            <Card
+              className="w-full max-w-5xl rounded-lg border-blue-100"
+              styles={{ body: { padding: 14 } }}
+            >
+              <Flex vertical gap={8}>
+                <Paragraph className="!mb-0 !text-red-500">
+                  {listQuery.error instanceof Error
+                    ? listQuery.error.message
+                    : '查询失败，请稍后重试'}
+                </Paragraph>
+                <Flex>
+                  <Button onClick={() => listQuery.refetch()} className="rounded-lg">
+                    重试
+                  </Button>
+                </Flex>
+              </Flex>
+            </Card>
+          )}
+
+          {!listQuery.isError && (
+            <ItemList
+              items={filteredItems}
+              total={listQuery.data?.total}
+              loading={listQuery.isFetching}
+              onSelectItem={handleSelectItem}
+            />
+          )}
+        </>
       )}
     </Flex>
   )

@@ -3,9 +3,9 @@
 import type { QueryFilters } from './types'
 import { Button, Card, Flex, Input, message, Modal, Select, Typography } from 'antd'
 import { useMemo, useState } from 'react'
+import { usePublicConfigQuery } from '@/hooks/queries/usePublicQueries'
 import {
   ITEM_TYPE_OPTIONS,
-  ITEM_TYPE_OPTIONS_WITH_OTHER,
   ITEM_TYPE_OTHER_VALUE,
   LOCATION_OPTIONS,
   STATUS_OPTIONS,
@@ -33,6 +33,26 @@ function FilterPanel({
 }: FilterPanelProps) {
   const [otherTypeOpen, setOtherTypeOpen] = useState(false)
   const [otherTypeInput, setOtherTypeInput] = useState('')
+  const publicConfigQuery = usePublicConfigQuery()
+
+  const baseItemTypeOptions = useMemo(() => {
+    const itemTypes = (publicConfigQuery.data?.itemTypes || [])
+      .map(item => item.trim())
+      .filter(Boolean)
+
+    if (!itemTypes.length)
+      return ITEM_TYPE_OPTIONS
+
+    return itemTypes.map(itemType => ({
+      label: itemType,
+      value: itemType,
+    }))
+  }, [publicConfigQuery.data?.itemTypes])
+
+  const itemTypeOptionsWithOther = useMemo(
+    () => [...baseItemTypeOptions, { label: '其它', value: ITEM_TYPE_OTHER_VALUE }],
+    [baseItemTypeOptions],
+  )
 
   const hasAnyFilter = useMemo(
     () => Object.values(filters).some(Boolean),
@@ -41,18 +61,18 @@ function FilterPanel({
   const hasCustomItemType = useMemo(
     () =>
       !!filters.itemType
-      && !ITEM_TYPE_OPTIONS.some(option => option.value === filters.itemType),
-    [filters.itemType],
+      && !baseItemTypeOptions.some(option => option.value === filters.itemType),
+    [baseItemTypeOptions, filters.itemType],
   )
   const itemTypeOptions = useMemo(() => {
     if (!hasCustomItemType || !filters.itemType)
-      return ITEM_TYPE_OPTIONS_WITH_OTHER
+      return itemTypeOptionsWithOther
 
     return [
       { label: `其它：${filters.itemType}`, value: filters.itemType },
-      ...ITEM_TYPE_OPTIONS_WITH_OTHER,
+      ...itemTypeOptionsWithOther,
     ]
-  }, [filters.itemType, hasCustomItemType])
+  }, [filters.itemType, hasCustomItemType, itemTypeOptionsWithOther])
 
   const patchFilters = (patch: Partial<QueryFilters>) => {
     onFiltersChange({

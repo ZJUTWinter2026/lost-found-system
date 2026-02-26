@@ -65,4 +65,5 @@ export interface SubmitFeedbackPayload {
   types: string[]
   description: string
   source: FeedbackRecord['source']
+  postId?: string | number
 }

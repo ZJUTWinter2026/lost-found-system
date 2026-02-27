@@ -4,34 +4,28 @@ import { request } from '@/api/request'
 
 export type PostPublishType = 'LOST' | 'FOUND'
 export type PostCampus = 'ZHAO_HUI' | 'PING_FENG' | 'MO_GAN_SHAN'
-export type PostStatus = '0' | '1' | '2'
-export type MyPostReviewStatus = '0' | '1' | '2' | '3' | '4' | '5'
-
-interface PostStatusValueMap {
-  0: '0'
-  1: '1'
-  2: '2'
-}
-
-type NumericPostStatus = keyof PostStatusValueMap
-
-interface MyPostStatusValueMap {
-  0: '0'
-  1: '1'
-  2: '2'
-  3: '3'
-  4: '4'
-  5: '5'
-}
-
-type NumericMyPostStatus = keyof MyPostStatusValueMap
+export type PostStatus
+  = 'PENDING'
+    | 'APPROVED'
+    | 'MATCHED'
+    | 'CLAIMED'
+    | 'CANCELLED'
+    | 'REJECTED'
+    | 'ARCHIVED'
+export type MyPostReviewStatus
+  = 'PENDING'
+    | 'APPROVED'
+    | 'MATCHED'
+    | 'CLAIMED'
+    | 'CANCELLED'
+    | 'REJECTED'
 
 export interface LostFoundListParams {
   publish_type?: PostPublishType
   item_type?: string
   campus?: PostCampus
   location?: string
-  status?: PostStatus | NumericPostStatus
+  status?: PostStatus
   start_time?: string
   end_time?: string
   page?: number
@@ -42,6 +36,7 @@ export interface LostFoundListItem {
   campus: string
   event_time: string
   features: string
+  has_reward: boolean
   id: number
   images: string[]
   item_name: string
@@ -49,6 +44,7 @@ export interface LostFoundListItem {
   item_type_other?: string
   location: string
   publish_type: string
+  reward_description: string
   status: string
 }
 
@@ -72,6 +68,7 @@ export interface PublishPostPayload {
   contact_name: string
   contact_phone: string
   has_reward: boolean
+  reward_description?: string
   images: string[]
 }
 
@@ -81,7 +78,7 @@ interface PublishPostData {
 
 export interface MyPostListParams {
   publish_type?: PostPublishType
-  status?: MyPostReviewStatus | NumericMyPostStatus
+  status?: MyPostReviewStatus
   page?: number
   page_size?: number
 }
@@ -128,6 +125,7 @@ export interface LostFoundDetailData {
   processed_at: string
   publish_type: string
   reject_reason: string
+  reward_description: string
   status: string
   storage_location: string
 }
@@ -145,6 +143,7 @@ export interface UpdateMyPostPayload {
   contact_name: string
   contact_phone: string
   has_reward: boolean
+  reward_description?: string
   images: string[]
 }
 
@@ -196,6 +195,28 @@ function toText(value: unknown) {
   return value.trim()
 }
 
+function toLimitedText(value: unknown, maxLength: number) {
+  const normalized = toText(value)
+  if (!normalized)
+    return undefined
+
+  return normalized.slice(0, maxLength)
+}
+
+function toPositiveInteger(value: unknown, fallback: number) {
+  const numericValue = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(numericValue))
+    return fallback
+
+  const parsed = Math.trunc(numericValue)
+  return parsed >= 1 ? parsed : fallback
+}
+
+function toPageSize(value: unknown, fallback = 10) {
+  const parsed = toPositiveInteger(value, fallback)
+  return parsed > 50 ? 50 : parsed
+}
+
 function resolvePostType(value: string): ItemPostType {
   const normalized = toText(value)
   const upper = normalized.toUpperCase()
@@ -205,13 +226,13 @@ function resolvePostType(value: string): ItemPostType {
   return '失物'
 }
 
-function resolveLostFoundItemStatus(value: string): ItemStatus {
+function resolveLostFoundItemStatus(value: string, publishTypeValue?: string): ItemStatus {
   const normalized = toText(value)
   const upper = normalized.toUpperCase()
+  const postType = resolvePostType(toText(publishTypeValue || ''))
 
   if (
-    normalized === '2'
-    || normalized === '已认领'
+    normalized === '已认领'
     || normalized === '已归还'
     || upper === 'CLAIMED'
     || upper === 'ARCHIVED'
@@ -220,15 +241,14 @@ function resolveLostFoundItemStatus(value: string): ItemStatus {
   }
 
   if (
-    normalized === '1'
-    || normalized === '待认领'
-    || normalized === '已发布'
-    || upper === 'PUBLISHED'
+    upper === 'CANCELLED'
+    || upper === 'CANCELED'
+    || upper === 'REJECTED'
   ) {
-    return '待认领'
+    return '已归还'
   }
 
-  return '寻找中'
+  return postType === '招领' ? '待认领' : '寻找中'
 }
 
 function resolveReviewStatus(value: string, statusText?: string): PublishReviewStatus {
@@ -243,13 +263,17 @@ function resolveReviewStatus(value: string, statusText?: string): PublishReviewS
   ) {
     return normalizedText
   }
+  if (normalizedText === '已归档')
+    return '已认领'
 
   const normalized = toText(value).toUpperCase()
+  if (normalized === '0' || normalized === 'PENDING')
+    return '待审核'
   if (normalized === '1' || normalized === 'APPROVED')
     return '已通过'
   if (normalized === '2' || normalized === 'MATCHED')
     return '已匹配'
-  if (normalized === '3' || normalized === 'CLAIMED')
+  if (normalized === '3' || normalized === 'CLAIMED' || normalized === 'ARCHIVED')
     return '已认领'
   if (normalized === '4' || normalized === 'CANCELED' || normalized === 'CANCELLED')
     return '已取消'
@@ -273,14 +297,15 @@ export function mapPostListItemToLostFoundItem(item: LostFoundListItem): LostFou
     itemType: toText(item.item_type_other) || item.item_type,
     location: item.location,
     occurredAt: item.event_time,
-    status: resolveLostFoundItemStatus(item.status),
+    status: resolveLostFoundItemStatus(item.status, item.publish_type),
     postType: resolvePostType(item.publish_type),
     description: item.features,
     features: item.features,
     storageLocation: item.location,
     claimCount: 0,
     contact: '',
-    hasReward: false,
+    hasReward: item.has_reward,
+    rewardRemark: toText(item.reward_description) || undefined,
     photos: item.images,
   }
 }
@@ -295,7 +320,7 @@ export function mapPostDetailToLostFoundItem(item: LostFoundDetailData): LostFou
     itemType: toText(item.item_type_other) || item.item_type,
     location: item.location,
     occurredAt: item.event_time,
-    status: resolveLostFoundItemStatus(item.status),
+    status: resolveLostFoundItemStatus(item.status, item.publish_type),
     postType: resolvePostType(item.publish_type),
     description: item.features,
     features: item.features,
@@ -303,6 +328,7 @@ export function mapPostDetailToLostFoundItem(item: LostFoundDetailData): LostFou
     claimCount: item.claim_count,
     contact: [contactName, contactPhone].filter(Boolean).join(' '),
     hasReward: item.has_reward,
+    rewardRemark: toText(item.reward_description) || undefined,
     photos: item.images,
   }
 }
@@ -324,6 +350,7 @@ export function mapPostDetailToPublishRecord(item: LostFoundDetailData): Publish
     contactName: toText(item.contact_name),
     contactPhone: toText(item.contact_phone),
     hasReward: item.has_reward,
+    rewardRemark: toText(item.reward_description) || undefined,
     photos: item.images.slice(0, 3),
     createdAt: item.created_at,
     reviewStatus,
@@ -357,29 +384,20 @@ export function mapMyPostListItemToPublishRecord(item: MyPostListItem): PublishR
   }
 }
 
-function toPostStatus(status: LostFoundListParams['status']) {
-  if (status === undefined)
-    return undefined
-
-  return String(status) as PostStatus
-}
-
-function toMyPostStatus(status: MyPostListParams['status']) {
-  if (status === undefined)
-    return undefined
-
-  return String(status) as MyPostReviewStatus
-}
-
 export function getLostFoundList(params: LostFoundListParams = {}) {
+  const page = toPositiveInteger(params.page, 1)
+  const pageSize = toPageSize(params.page_size, 10)
+
   return request<LostFoundListData>({
     url: '/post/list',
     method: 'GET',
     params: {
       ...params,
-      item_type: params.item_type?.trim() || undefined,
-      location: params.location?.trim() || undefined,
-      status: toPostStatus(params.status),
+      item_type: toLimitedText(params.item_type, 20),
+      location: toLimitedText(params.location, 100),
+      status: params.status,
+      page,
+      page_size: pageSize,
     },
   })
 }
@@ -390,7 +408,6 @@ export function getPostDetailData(postId: string | number) {
   return request<LostFoundDetailData>({
     url: `/post/detail/${encodeURIComponent(id)}`,
     method: 'GET',
-    params: { id },
   })
 }
 
@@ -399,12 +416,16 @@ export function getLostFoundItemDetail(itemId: string) {
 }
 
 export function getMyPostList(params: MyPostListParams = {}) {
+  const page = toPositiveInteger(params.page, 1)
+  const pageSize = toPageSize(params.page_size, 10)
+
   return request<MyPostListData>({
     url: '/post/my-list',
     method: 'GET',
     params: {
       ...params,
-      status: toMyPostStatus(params.status),
+      page,
+      page_size: pageSize,
     },
   })
 }
@@ -461,7 +482,6 @@ export function getClaimList(postId: string | number) {
   return request<ClaimListData>({
     url: `/claim/list/${encodeURIComponent(id)}`,
     method: 'GET',
-    params: { post_id: id },
   })
 }
 

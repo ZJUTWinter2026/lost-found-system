@@ -11,9 +11,9 @@ import PhotoUploader from '@/components/publish/PhotoUploader'
 import PublishFilters from '@/components/publish/PublishFilters'
 import PublishTypeSwitch from '@/components/publish/PublishTypeSwitch'
 import {
+  CAMPUS_OPTIONS,
   ITEM_TYPE_OPTIONS,
   ITEM_TYPE_OTHER_VALUE,
-  LOCATION_OPTIONS,
   STATUS_OPTIONS,
   TIME_RANGE_OPTIONS,
 } from '@/components/query/constants'
@@ -24,8 +24,8 @@ const { Text } = Typography
 const { TextArea } = Input
 
 const DRAFT_RESTORED_MESSAGE_KEY = 'publish-draft-restored'
-const DEFAULT_CAMPUS: PostCampus = 'PING_FENG'
 const VALID_POST_TYPES = new Set<ItemPostType>(['失物', '招领'])
+const VALID_CAMPUS = new Set<PostCampus>(CAMPUS_OPTIONS.map(option => option.value))
 const VALID_TIME_RANGE = new Set<TimeRangeValue>(TIME_RANGE_OPTIONS.map(option => option.value))
 const VALID_STATUS = new Set<ItemStatus>(STATUS_OPTIONS.map(option => option.value))
 
@@ -99,6 +99,13 @@ function toOptionalTimeRange(value: unknown) {
   return VALID_TIME_RANGE.has(value as TimeRangeValue) ? (value as TimeRangeValue) : undefined
 }
 
+function toOptionalCampus(value: unknown) {
+  if (typeof value !== 'string')
+    return undefined
+
+  return VALID_CAMPUS.has(value as PostCampus) ? (value as PostCampus) : undefined
+}
+
 function toOptionalStatus(value: unknown) {
   if (typeof value !== 'string')
     return undefined
@@ -121,6 +128,7 @@ function readDraft() {
 
     const draft: PublishDraft = {
       postType: toOptionalPostType(parsed.postType),
+      campus: toOptionalCampus(parsed.campus),
       itemType: toOptionalString(parsed.itemType),
       location: toOptionalString(parsed.location),
       timeRange: toOptionalTimeRange(parsed.timeRange),
@@ -159,6 +167,7 @@ function writeDraft(draft: PublishDraft) {
 function buildDraft(values: PublishFormValues, photos: string[]): PublishDraft {
   return {
     postType: values.postType,
+    campus: values.campus,
     itemType: values.itemType,
     location: values.location,
     timeRange: values.timeRange,
@@ -177,6 +186,7 @@ function buildDraft(values: PublishFormValues, photos: string[]): PublishDraft {
 function isDraftEmpty(draft: PublishDraft) {
   return !(
     draft.postType
+    || draft.campus
     || draft.itemType
     || draft.location
     || draft.timeRange
@@ -206,6 +216,7 @@ function PublishPage() {
 
   const watchedValues = Form.useWatch([], form) as PublishFormValues | undefined
   const postType = Form.useWatch('postType', form)
+  const campus = Form.useWatch('campus', form)
   const hasReward = Form.useWatch('hasReward', form)
   const itemType = Form.useWatch('itemType', form)
   const location = Form.useWatch('location', form)
@@ -358,7 +369,7 @@ function PublishPage() {
         item_name: (values.itemName ?? '').trim(),
         item_type: itemTypeFields.item_type,
         item_type_other: itemTypeFields.item_type_other,
-        campus: DEFAULT_CAMPUS,
+        campus: values.campus as PostCampus,
         location: (values.location ?? '').trim(),
         storage_location: (values.location ?? '').trim(),
         event_time: toIsoDateText(values.occurredAt),
@@ -366,6 +377,7 @@ function PublishPage() {
         contact_name: (values.contactName ?? '').trim(),
         contact_phone: (values.contactPhone ?? '').trim(),
         has_reward: !!values.hasReward,
+        reward_description: values.hasReward ? (values.rewardRemark ?? '').trim() : '',
         images: photos.slice(0, 3),
       })
 
@@ -397,7 +409,7 @@ function PublishPage() {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ hasReward: false }}
+          initialValues={{ hasReward: false, campus: 'PING_FENG' }}
           onValuesChange={() => setSubmitted(false)}
         >
           <Flex vertical gap={12}>
@@ -419,14 +431,19 @@ function PublishPage() {
             </Flex>
 
             <PublishFilters
+              campus={campus}
               itemType={itemType}
               location={location}
               timeRange={timeRange}
               status={status}
+              campusOptions={CAMPUS_OPTIONS}
               itemTypeOptions={itemTypeOptions}
-              locationOptions={LOCATION_OPTIONS}
               timeRangeOptions={TIME_RANGE_OPTIONS}
               statusOptions={STATUS_OPTIONS}
+              onCampusChange={(value) => {
+                setSubmitted(false)
+                form.setFieldValue('campus', value)
+              }}
               onItemTypeChange={handleItemTypeChange}
               onLocationChange={(value) => {
                 setSubmitted(false)
@@ -442,6 +459,13 @@ function PublishPage() {
               }}
             />
 
+            <Form.Item
+              name="campus"
+              hidden
+              rules={[{ required: true, message: '请选择校区' }]}
+            >
+              <Input />
+            </Form.Item>
             <Form.Item
               name="itemType"
               hidden

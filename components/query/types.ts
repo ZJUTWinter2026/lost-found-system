@@ -1,6 +1,7 @@
 export type ItemStatus = '寻找中' | '待认领' | '已归还'
 
 export type ItemPostType = '失物' | '招领'
+export type CampusCode = 'ZHAO_HUI' | 'PING_FENG' | 'MO_GAN_SHAN'
 
 export type ClaimAction = '找回' | '归还'
 
@@ -9,7 +10,9 @@ export type ReviewStatus = '待审核' | '处理中' | '已处理'
 export type TimeRangeValue = '24h' | '3d' | '7d' | '30d'
 
 export interface QueryFilters {
+  publishType?: ItemPostType
   itemType?: string
+  campus?: CampusCode
   location?: string
   timeRange?: TimeRangeValue
   status?: ItemStatus

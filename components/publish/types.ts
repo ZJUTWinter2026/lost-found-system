@@ -1,7 +1,8 @@
-import type { ItemPostType, ItemStatus, TimeRangeValue } from '@/components/query/types'
+import type { CampusCode, ItemPostType, ItemStatus, TimeRangeValue } from '@/components/query/types'
 
 export interface PublishFormValues {
   postType?: ItemPostType
+  campus?: CampusCode
   itemType?: string
   location?: string
   timeRange?: TimeRangeValue
@@ -17,6 +18,7 @@ export interface PublishFormValues {
 
 export interface PublishDraft {
   postType?: ItemPostType
+  campus?: CampusCode
   itemType?: string
   location?: string
   timeRange?: TimeRangeValue

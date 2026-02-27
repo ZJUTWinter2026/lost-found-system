@@ -1,7 +1,10 @@
 import { request } from '@/api/request'
 
-interface PublicConfigData {
+interface SystemConfigData {
   item_types: string[]
+  feedback_types?: string[]
+  claim_validity_days?: number
+  publish_limit?: number
 }
 
 export interface PublicConfig {
@@ -9,8 +12,8 @@ export interface PublicConfig {
 }
 
 export function getPublicConfig() {
-  return request<PublicConfigData>({
-    url: '/public/config',
+  return request<SystemConfigData>({
+    url: '/system/config',
     method: 'GET',
   }).then(result => ({
     itemTypes: result.item_types || [],

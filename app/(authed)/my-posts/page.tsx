@@ -129,8 +129,14 @@ function toIsoDateText(value?: string) {
 }
 
 function resolveCampus(value: string): PostCampus {
-  if (value === 'ZHAO_HUI' || value === 'PING_FENG' || value === 'MO_GAN_SHAN')
-    return value
+  const normalized = value.trim()
+  const upper = normalized.toUpperCase()
+  if (upper === 'ZHAO_HUI' || normalized === '朝晖')
+    return 'ZHAO_HUI'
+  if (upper === 'PING_FENG' || normalized === '屏峰')
+    return 'PING_FENG'
+  if (upper === 'MO_GAN_SHAN' || normalized === '莫干山')
+    return 'MO_GAN_SHAN'
 
   return 'PING_FENG'
 }
@@ -487,7 +493,7 @@ function StatusSection({
 }
 
 function MyPostsPage() {
-  const myPostListQuery = useMyPostListQuery({ page: 1, page_size: 50 })
+  const myPostListQuery = useMyPostListQuery({ page: 1, page_size: 10 })
   const publicConfigQuery = usePublicConfigQuery()
   const updateMyPostMutation = useUpdateMyPostMutation()
   const deleteMyPostMutation = useDeleteMyPostMutation()
@@ -631,6 +637,7 @@ function MyPostsPage() {
       contact_name: payload.contactName.trim(),
       contact_phone: payload.contactPhone.trim(),
       has_reward: payload.hasReward,
+      reward_description: payload.hasReward ? (payload.rewardRemark ?? '').trim() : '',
       images: payload.photos.slice(0, 3),
     }
 

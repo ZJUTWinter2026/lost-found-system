@@ -12,21 +12,17 @@ import { persistLoginSession } from '@/utils/auth'
 const { Text, Title } = Typography
 
 interface LoginFormValues {
-  uid: string
+  username: string
   password: string
 }
 
-function validateUid(_: RuleObject, value: string) {
+function validateUsername(_: RuleObject, value: string) {
   if (!value)
-    return Promise.reject(new Error('请输入学号'))
+    return Promise.reject(new Error('请输入账号'))
 
   const trimmed = value.trim()
-  if (!/^\d+$/.test(trimmed))
-    return Promise.reject(new Error('学号必须为纯数字'))
-
-  const uid = Number(trimmed)
-  if (!Number.isSafeInteger(uid) || uid <= 0)
-    return Promise.reject(new Error('请输入有效学号'))
+  if (!trimmed)
+    return Promise.reject(new Error('请输入有效账号'))
 
   return Promise.resolve()
 }
@@ -64,10 +60,10 @@ function LoginPage() {
   }, [])
 
   const handleLogin = (values: LoginFormValues) => {
-    const uid = Number(values.uid.trim())
+    const username = values.username.trim()
     loginMutation.mutate(
       {
-        uid,
+        username,
         password: values.password,
       },
       {
@@ -75,7 +71,6 @@ function LoginPage() {
           persistLoginSession({
             id: result.id,
             needUpdate: result.need_update,
-            token: result.token,
             userType: result.user_type,
           })
 
@@ -135,7 +130,7 @@ function LoginPage() {
               <Title
                 level={2}
                 data-animate="rise"
-                className="!mb-0 !text-2xl !font-semibold !text-zinc-900"
+                className="!my-0 !text-2xl !font-semibold !text-zinc-900"
               >
                 校园失物招领平台
               </Title>
@@ -150,15 +145,14 @@ function LoginPage() {
             >
               <Form.Item
                 label="账号"
-                name="uid"
+                name="username"
                 style={formItemStyle}
-                rules={[{ validator: validateUid }]}
+                rules={[{ validator: validateUsername }]}
               >
                 <Input
                   size="large"
-                  placeholder="学号 / 工号"
+                  placeholder="账号（如学号 / 工号 / root）"
                   autoComplete="username"
-                  inputMode="numeric"
                   maxLength={20}
                 />
               </Form.Item>

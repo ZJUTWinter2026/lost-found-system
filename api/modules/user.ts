@@ -1,24 +1,19 @@
 import { request } from '@/api/request'
 
 export interface LoginPayload {
-  uid: number
+  username: string
   password: string
 }
 
 export interface LoginResult {
   id: number
   need_update: boolean
-  token: string
   user_type: string
 }
 
 export interface UpdatePasswordPayload {
   old_password: string
   new_password: string
-}
-
-interface UpdatePasswordResult {
-  token: string
 }
 
 export function loginByPassword(payload: LoginPayload) {
@@ -54,7 +49,7 @@ export function uploadImages(files: File[]) {
 }
 
 export function updatePassword(payload: UpdatePasswordPayload) {
-  return request<UpdatePasswordResult>({
+  return request<unknown>({
     url: '/user/update',
     method: 'POST',
     data: payload,

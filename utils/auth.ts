@@ -1,9 +1,9 @@
-import { ACCESS_TOKEN_STORAGE_KEY, AUTH_USER_STORAGE_KEY } from '@/constants/auth'
+import { AUTH_USER_STORAGE_KEY } from '@/constants/auth'
+import { useAuthStore } from '@/stores/authStore'
 
 export interface LoginSessionPayload {
   id: number
   needUpdate: boolean
-  token: string
   userType: string
 }
 
@@ -18,20 +18,27 @@ function canUseStorage() {
 }
 
 export function persistLoginSession(payload: LoginSessionPayload) {
-  if (!canUseStorage())
-    return
-
-  const authUser: StoredAuthUser = {
+  useAuthStore.getState().setLoginSession({
     id: payload.id,
     needUpdate: payload.needUpdate,
     userType: payload.userType,
-  }
+  })
 
-  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, payload.token)
-  window.localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(authUser))
+  if (!canUseStorage())
+    return
+
+  window.localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify({
+    id: payload.id,
+    needUpdate: payload.needUpdate,
+    userType: payload.userType,
+  }))
 }
 
 export function readAuthUser() {
+  const authUser = useAuthStore.getState().authUser
+  if (authUser)
+    return authUser
+
   if (!canUseStorage())
     return null
 
@@ -40,7 +47,7 @@ export function readAuthUser() {
     return null
 
   try {
-    const payload = JSON.parse(raw) as Partial<StoredAuthUser>
+    const payload = JSON.parse(raw) as Partial<{ id: number, needUpdate: boolean, userType: string }>
     if (
       typeof payload.id !== 'number'
       || typeof payload.needUpdate !== 'boolean'
@@ -56,14 +63,9 @@ export function readAuthUser() {
   }
 }
 
-export function updateAccessToken(token: string) {
-  if (!canUseStorage())
-    return
-
-  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token)
-}
-
 export function markPasswordUpdated() {
+  useAuthStore.getState().markPasswordUpdated()
+
   if (!canUseStorage())
     return
 
@@ -81,9 +83,10 @@ export function markPasswordUpdated() {
 }
 
 export function clearLoginSession() {
+  useAuthStore.getState().clearLoginSession()
+
   if (!canUseStorage())
     return
 
-  window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
   window.localStorage.removeItem(AUTH_USER_STORAGE_KEY)
 }

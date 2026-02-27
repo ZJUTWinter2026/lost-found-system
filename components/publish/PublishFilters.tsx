@@ -1,5 +1,5 @@
-import type { ItemStatus, TimeRangeValue } from '@/components/query/types'
-import { Flex, Select, Typography } from 'antd'
+import type { CampusCode, ItemStatus, TimeRangeValue } from '@/components/query/types'
+import { Flex, Input, Select, Typography } from 'antd'
 
 const { Text } = Typography
 
@@ -9,14 +9,16 @@ interface Option {
 }
 
 interface PublishFiltersProps {
+  campus?: CampusCode
   itemType?: string
   location?: string
   timeRange?: TimeRangeValue
   status?: ItemStatus
+  campusOptions: Option[]
   itemTypeOptions: Option[]
-  locationOptions: Option[]
   timeRangeOptions: Option[]
   statusOptions: Option[]
+  onCampusChange: (value?: CampusCode) => void
   onItemTypeChange: (value?: string) => void
   onLocationChange: (value?: string) => void
   onTimeRangeChange: (value?: TimeRangeValue) => void
@@ -33,14 +35,16 @@ function Label({ text }: { text: string }) {
 }
 
 function PublishFilters({
+  campus,
   itemType,
   location,
   timeRange,
   status,
+  campusOptions,
   itemTypeOptions,
-  locationOptions,
   timeRangeOptions,
   statusOptions,
+  onCampusChange,
   onItemTypeChange,
   onLocationChange,
   onTimeRangeChange,
@@ -48,7 +52,17 @@ function PublishFilters({
 }: PublishFiltersProps) {
   return (
     <Flex align="end" gap={8} wrap>
-      <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
+      <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(20%-7px)]">
+        <Label text="校区" />
+        <Select
+          value={campus}
+          placeholder="请选择"
+          options={campusOptions}
+          onChange={value => onCampusChange(value as CampusCode)}
+        />
+      </Flex>
+
+      <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(20%-7px)]">
         <Label text="物品类型" />
         <Select
           value={itemType}
@@ -58,17 +72,18 @@ function PublishFilters({
         />
       </Flex>
 
-      <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
+      <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(20%-7px)]">
         <Label text="丢失/拾取地点" />
-        <Select
+        <Input
           value={location}
-          placeholder="请选择"
-          options={locationOptions}
-          onChange={value => onLocationChange(value)}
+          allowClear
+          maxLength={100}
+          placeholder="请输入地点"
+          onChange={event => onLocationChange(event.target.value || undefined)}
         />
       </Flex>
 
-      <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
+      <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(20%-7px)]">
         <Label text="时间范围" />
         <Select
           value={timeRange}
@@ -78,7 +93,7 @@ function PublishFilters({
         />
       </Flex>
 
-      <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
+      <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(20%-7px)]">
         <Label text="物品状态" />
         <Select
           value={status}

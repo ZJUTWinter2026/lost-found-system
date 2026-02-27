@@ -2,7 +2,7 @@
 
 import { Alert, Button, Flex, Form, Input, message, Modal } from 'antd'
 import { useUpdatePasswordMutation } from '@/hooks/queries/useUserAuthMutations'
-import { markPasswordUpdated, updateAccessToken } from '@/utils/auth'
+import { markPasswordUpdated } from '@/utils/auth'
 
 interface ChangePasswordModalProps {
   open: boolean
@@ -35,12 +35,11 @@ function ChangePasswordModal({
     try {
       const values = await form.validateFields()
 
-      const result = await updatePasswordMutation.mutateAsync({
+      await updatePasswordMutation.mutateAsync({
         old_password: values.oldPassword,
         new_password: values.newPassword,
       })
 
-      updateAccessToken(result.token)
       markPasswordUpdated()
       message.success('密码修改成功')
       onUpdated?.()

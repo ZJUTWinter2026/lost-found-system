@@ -1,12 +1,18 @@
 'use client'
 
 import type { LostFoundListParams, PostStatus } from '@/api/modules/lostFound'
-import type { ItemStatus, QueryFilters, TimeRangeValue } from '@/components/query/types'
+import type { CampusCode, ItemPostType, ItemStatus, QueryFilters, TimeRangeValue } from '@/components/query/types'
 import { Button, Card, Flex, Typography } from 'antd'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMemo, useRef, useState } from 'react'
 import { mapPostListItemToLostFoundItem } from '@/api/modules/lostFound'
-import { STATUS_OPTIONS, TIME_RANGE_HOUR_MAP, TIME_RANGE_OPTIONS } from '@/components/query/constants'
+import {
+  CAMPUS_OPTIONS,
+  PUBLISH_TYPE_OPTIONS,
+  STATUS_OPTIONS,
+  TIME_RANGE_HOUR_MAP,
+  TIME_RANGE_OPTIONS,
+} from '@/components/query/constants'
 import FilterPanel from '@/components/query/FilterPanel'
 import ItemList from '@/components/query/ItemList'
 import { toTimestamp } from '@/components/query/utils'
@@ -22,23 +28,35 @@ interface QueryPageState {
 const VALID_TIME_RANGE = new Set<TimeRangeValue>(
   TIME_RANGE_OPTIONS.map(option => option.value),
 )
+const VALID_POST_TYPE = new Set<ItemPostType>(
+  PUBLISH_TYPE_OPTIONS.map(option => option.value),
+)
+const VALID_CAMPUS = new Set<CampusCode>(
+  CAMPUS_OPTIONS.map(option => option.value),
+)
 const VALID_STATUS = new Set<ItemStatus>(
   STATUS_OPTIONS.map(option => option.value),
 )
 
 const STATUS_TO_BACKEND_MAP: Record<ItemStatus, PostStatus> = {
-  寻找中: '1',
-  待认领: '1',
-  已归还: '2',
+  寻找中: 'APPROVED',
+  待认领: 'APPROVED',
+  已归还: 'CLAIMED',
+}
+
+function toPostPublishType(postType: ItemPostType) {
+  return postType === '招领' ? 'FOUND' : 'LOST'
 }
 
 function buildListParams(filters: QueryFilters): LostFoundListParams {
   const params: LostFoundListParams = {
+    publish_type: filters.publishType ? toPostPublishType(filters.publishType) : undefined,
     item_type: filters.itemType?.trim() || undefined,
+    campus: filters.campus,
     location: filters.location?.trim() || undefined,
     status: filters.status ? STATUS_TO_BACKEND_MAP[filters.status] : undefined,
     page: 1,
-    page_size: 20,
+    page_size: 10,
   }
 
   if (filters.timeRange) {
@@ -53,14 +71,24 @@ function buildListParams(filters: QueryFilters): LostFoundListParams {
 }
 
 function parseInitialState(searchParams: URLSearchParams): QueryPageState {
+  const publishTypeValue = searchParams.get('publishType')
   const itemType = searchParams.get('itemType')?.trim()
+  const campusValue = searchParams.get('campus')
   const location = searchParams.get('location')?.trim()
   const timeRangeValue = searchParams.get('timeRange')
   const statusValue = searchParams.get('status')
 
   return {
     filters: {
+      publishType:
+        publishTypeValue && VALID_POST_TYPE.has(publishTypeValue as ItemPostType)
+          ? (publishTypeValue as ItemPostType)
+          : undefined,
       itemType: itemType || undefined,
+      campus:
+        campusValue && VALID_CAMPUS.has(campusValue as CampusCode)
+          ? (campusValue as CampusCode)
+          : undefined,
       location: location || undefined,
       timeRange:
         timeRangeValue && VALID_TIME_RANGE.has(timeRangeValue as TimeRangeValue)
@@ -78,8 +106,12 @@ function parseInitialState(searchParams: URLSearchParams): QueryPageState {
 function buildSearchText(filters: QueryFilters, hasViewed: boolean) {
   const params = new URLSearchParams()
 
+  if (filters.publishType)
+    params.set('publishType', filters.publishType)
   if (filters.itemType)
     params.set('itemType', filters.itemType)
+  if (filters.campus)
+    params.set('campus', filters.campus)
   if (filters.location)
     params.set('location', filters.location)
   if (filters.timeRange)

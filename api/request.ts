@@ -3,31 +3,9 @@ import type { ApiEnvelope } from '@/api/types'
 import { AxiosError } from 'axios'
 import { apiClient } from '@/api/client'
 import { ApiRequestError } from '@/api/types'
-import { ACCESS_TOKEN_STORAGE_KEY } from '@/constants/auth'
 
 interface ResponseMessagePayload {
   message?: string
-}
-
-function readAccessToken() {
-  if (typeof window === 'undefined')
-    return null
-
-  return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)
-}
-
-function appendAuthHeader(config: AxiosRequestConfig): AxiosRequestConfig {
-  const token = readAccessToken()
-  if (!token)
-    return config
-
-  return {
-    ...config,
-    headers: {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    },
-  }
 }
 
 function isApiEnvelope<T>(payload: unknown): payload is ApiEnvelope<T> {
@@ -49,7 +27,7 @@ function resolveErrorMessage(payload: unknown, fallback: string) {
 
 export async function request<T>(config: AxiosRequestConfig): Promise<T> {
   try {
-    const response = await apiClient.request<ApiEnvelope<T> | T>(appendAuthHeader(config))
+    const response = await apiClient.request<ApiEnvelope<T> | T>(config)
     const payload = response.data
 
     if (!isApiEnvelope<T>(payload))

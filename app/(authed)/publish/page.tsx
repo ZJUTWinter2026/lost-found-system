@@ -16,7 +16,6 @@ import { usePublishPostMutation } from '@/hooks/queries/useUserPostQueries'
 const { Text } = Typography
 const { TextArea } = Input
 
-const DRAFT_RESTORED_MESSAGE_KEY = 'publish-draft-restored'
 const VALID_POST_TYPES = new Set<ItemPostType>(['失物', '招领'])
 const VALID_CAMPUS = new Set<PostCampus>(CAMPUS_OPTIONS.map(option => option.value))
 const OTHER_ITEM_TYPE_LABEL = '其它'
@@ -103,6 +102,7 @@ function readDraft() {
       campus: toOptionalCampus(parsed.campus),
       itemType: toOptionalString(parsed.itemType),
       location: toOptionalString(parsed.location),
+      storageLocation: toOptionalString(parsed.storageLocation),
       itemName: toOptionalString(parsed.itemName),
       occurredAt: toOptionalString(parsed.occurredAt),
       features: toOptionalString(parsed.features),
@@ -140,6 +140,7 @@ function buildDraft(values: PublishFormValues, photos: string[]): PublishDraft {
     campus: values.campus,
     itemType: values.itemType,
     location: values.location,
+    storageLocation: values.storageLocation,
     itemName: values.itemName,
     occurredAt: values.occurredAt,
     features: values.features,
@@ -157,6 +158,7 @@ function isDraftEmpty(draft: PublishDraft) {
     || draft.campus
     || draft.itemType
     || draft.location
+    || draft.storageLocation
     || draft.itemName
     || draft.occurredAt
     || draft.features
@@ -233,11 +235,6 @@ function PublishPage() {
       setPhotos(draft.photos)
       setDraftReady(true)
     })
-    message.open({
-      type: 'info',
-      key: DRAFT_RESTORED_MESSAGE_KEY,
-      content: '已恢复未提交的编辑内容',
-    })
   }, [form])
 
   useEffect(() => {
@@ -297,7 +294,7 @@ function PublishPage() {
       const itemTypeValue = (values.itemType ?? '').trim()
       const resolvedPostType = values.postType as ItemPostType
       const normalizedLocation = (values.location ?? '').trim()
-      const storageLocation = normalizedLocation
+      const storageLocation = (values.storageLocation ?? '').trim()
 
       await publishPostMutation.mutateAsync({
         publish_type: toPostPublishType(resolvedPostType),
@@ -416,30 +413,6 @@ function PublishPage() {
               </Form.Item>
             )}
 
-            <Form.Item
-              name="campus"
-              hidden
-              rules={[{ required: true, message: '请选择校区' }]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="itemType"
-              hidden
-              rules={[
-                { required: true, message: '请选择或输入物品类型' },
-                { max: 20, message: '物品类型最多 20 个字符' },
-              ]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="location"
-              hidden
-              rules={[{ required: true, message: '请输入丢失/拾取地点' }]}
-            >
-              <Input />
-            </Form.Item>
             <Flex gap={8} wrap>
               <Form.Item
                 name="itemName"
@@ -466,6 +439,18 @@ function PublishPage() {
                 />
               </Form.Item>
             </Flex>
+
+            <Form.Item
+              name="storageLocation"
+              label="存放地点"
+              className="!mb-0"
+              rules={[{ required: true, message: '请输入存放地点' }]}
+            >
+              <Input
+                maxLength={100}
+                placeholder="请输入存放地点"
+              />
+            </Form.Item>
 
             <Form.Item
               name="features"
@@ -558,12 +543,12 @@ function PublishPage() {
               )}
             </Flex>
 
-            <Flex justify="end" gap={8} wrap>
+            <Flex justify="space-between" align="center" gap={8} wrap>
               <Button
                 className="rounded-lg"
                 onClick={handleReset}
               >
-                取消
+                重置
               </Button>
               <Button
                 type="primary"

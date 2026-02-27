@@ -7,7 +7,6 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { clearLoginSession } from '@/utils/auth'
 import AnnouncementModal from './AnnouncementModal'
-import FeedbackModal from './FeedbackModal'
 
 const { Title } = Typography
 
@@ -22,7 +21,6 @@ const ACTION_BUTTON_CLASSNAME = 'rounded-lg !h-11 !px-4 !text-base !font-medium 
 function TopNav() {
   const router = useRouter()
   const pathname = usePathname()
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [announcementOpen, setAnnouncementOpen] = useState(false)
 
   const activeNav = useMemo(
@@ -54,8 +52,8 @@ function TopNav() {
         gap={12}
         className="z-20 shrink-0 border-b border-blue-100 bg-white/95 px-3 py-3 backdrop-blur sm:px-6 sm:py-4"
       >
-        <Flex align="center" className="shrink-0" style={{ paddingInlineStart: 16 }}>
-          <Title level={3} className="!mb-0 !text-blue-700">
+        <Flex align="center" className="shrink-0" style={{ paddingInlineStart: 24 }}>
+          <Title level={4} className="!mb-0 !text-blue-700">
             校园失物招领平台
           </Title>
         </Flex>
@@ -91,14 +89,6 @@ function TopNav() {
           <Button
             type="text"
             size="large"
-            onClick={() => setFeedbackOpen(true)}
-            className={ACTION_BUTTON_CLASSNAME}
-          >
-            意见反馈
-          </Button>
-          <Button
-            type="text"
-            size="large"
             onClick={handleLogout}
             className={`${ACTION_BUTTON_CLASSNAME} !text-red-500 hover:!text-red-500`}
           >
@@ -110,11 +100,6 @@ function TopNav() {
       <AnnouncementModal
         open={announcementOpen}
         onClose={() => setAnnouncementOpen(false)}
-      />
-
-      <FeedbackModal
-        open={feedbackOpen}
-        onClose={() => setFeedbackOpen(false)}
       />
     </>
   )

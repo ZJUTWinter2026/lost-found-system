@@ -18,7 +18,7 @@ import ItemList from '@/components/query/ItemList'
 import { toTimestamp } from '@/components/query/utils'
 import { useLostFoundListQuery } from '@/hooks/queries/useLostFoundQueries'
 
-const { Paragraph, Title } = Typography
+const { Paragraph } = Typography
 
 interface QueryPageState {
   filters: QueryFilters
@@ -99,7 +99,7 @@ function parseInitialState(searchParams: URLSearchParams): QueryPageState {
           ? (statusValue as ItemStatus)
           : undefined,
     },
-    hasViewed: searchParams.get('viewed') === '1',
+    hasViewed: searchParams.get('viewed') !== '0',
   }
 }
 
@@ -133,7 +133,6 @@ function QueryPageClient() {
 
   const [filters, setFilters] = useState<QueryFilters>(initialRef.current.filters)
   const [hasViewed, setHasViewed] = useState(initialRef.current.hasViewed)
-  const [hasSearchedOnce, setHasSearchedOnce] = useState(initialRef.current.hasViewed)
   const listParams = useMemo(
     () => buildListParams(filters),
     [filters],
@@ -161,7 +160,6 @@ function QueryPageClient() {
 
   const handleView = () => {
     setHasViewed(true)
-    setHasSearchedOnce(true)
     syncSearch(filters, true)
   }
 
@@ -171,20 +169,6 @@ function QueryPageClient() {
 
   return (
     <Flex vertical gap={12} align="center" className="w-full">
-      {!hasSearchedOnce && (
-        <Card
-          className="w-full max-w-5xl rounded-lg border-blue-100"
-          styles={{ body: { padding: 14 } }}
-        >
-          <Title level={4} className="!mb-2 !text-blue-700">
-            查询信息
-          </Title>
-          <Paragraph className="!mb-0 !text-blue-900/70">
-            请选择至少一个筛选标准并点击“查看”，即可浏览物品列表与详情。
-          </Paragraph>
-        </Card>
-      )}
-
       <FilterPanel
         filters={filters}
         onFiltersChange={handleFiltersChange}

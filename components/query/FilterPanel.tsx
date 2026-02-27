@@ -55,10 +55,6 @@ function FilterPanel({
     [baseItemTypeOptions],
   )
 
-  const hasAnyFilter = useMemo(
-    () => Object.values(filters).some(Boolean),
-    [filters],
-  )
   const hasCustomItemType = useMemo(
     () =>
       !!filters.itemType
@@ -193,7 +189,6 @@ function FilterPanel({
             <Button
               type="primary"
               className="rounded-lg"
-              disabled={!hasAnyFilter}
               onClick={onView}
             >
               查看

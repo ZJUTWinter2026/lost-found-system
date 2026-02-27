@@ -151,7 +151,7 @@ function LoginPage() {
               >
                 <Input
                   size="large"
-                  placeholder="账号（如学号 / 工号 / root）"
+                  placeholder="请输入账号"
                   autoComplete="username"
                   maxLength={20}
                 />

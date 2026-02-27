@@ -5,6 +5,7 @@ export interface PublishFormValues {
   campus?: CampusCode
   itemType?: string
   location?: string
+  storageLocation?: string
   itemName?: string
   occurredAt?: string
   features?: string
@@ -19,6 +20,7 @@ export interface PublishDraft {
   campus?: CampusCode
   itemType?: string
   location?: string
+  storageLocation?: string
   itemName?: string
   occurredAt?: string
   features?: string

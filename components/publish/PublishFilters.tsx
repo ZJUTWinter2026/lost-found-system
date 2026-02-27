@@ -1,5 +1,5 @@
 import type { CampusCode } from '@/components/query/types'
-import { Flex, Input, Select, Typography } from 'antd'
+import { Flex, Form, Input, Select, Typography } from 'antd'
 
 const { Text } = Typography
 
@@ -39,36 +39,60 @@ function PublishFilters({
   onLocationChange,
 }: PublishFiltersProps) {
   return (
-    <Flex align="end" gap={8} wrap>
+    <Flex align="start" gap={8} wrap>
       <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(33.333%-6px)]">
         <Label text="校区" />
-        <Select
-          value={campus}
-          placeholder="请选择"
-          options={campusOptions}
-          onChange={value => onCampusChange(value as CampusCode)}
-        />
+        <Form.Item
+          name="campus"
+          className="!mb-0"
+          rules={[{ required: true, message: '请选择校区' }]}
+        >
+          <Select
+            value={campus}
+            placeholder="请选择"
+            options={campusOptions}
+            onChange={value => onCampusChange(value as CampusCode)}
+          />
+        </Form.Item>
       </Flex>
 
       <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(33.333%-6px)]">
         <Label text="物品类型" />
-        <Select
-          value={itemType}
-          placeholder="请选择"
-          options={itemTypeOptions}
-          onChange={value => onItemTypeChange(value)}
-        />
+        <Form.Item
+          name="itemType"
+          className="!mb-0"
+          rules={[
+            { required: true, message: '请选择或输入物品类型' },
+            { max: 20, message: '物品类型最多 20 个字符' },
+          ]}
+        >
+          <Select
+            value={itemType}
+            placeholder="请选择"
+            options={itemTypeOptions}
+            onChange={value => onItemTypeChange(value)}
+          />
+        </Form.Item>
       </Flex>
 
       <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(33.333%-6px)]">
         <Label text="丢失/拾取地点" />
-        <Input
-          value={location}
-          allowClear
-          maxLength={100}
-          placeholder="请输入地点"
-          onChange={event => onLocationChange(event.target.value || undefined)}
-        />
+        <Form.Item
+          name="location"
+          className="!mb-0"
+          rules={[
+            { required: true, message: '请输入丢失/拾取地点' },
+            { max: 100, message: '地点最多 100 个字符' },
+          ]}
+        >
+          <Input
+            value={location}
+            allowClear
+            maxLength={100}
+            placeholder="请输入地点"
+            onChange={event => onLocationChange(event.target.value || undefined)}
+          />
+        </Form.Item>
       </Flex>
 
     </Flex>

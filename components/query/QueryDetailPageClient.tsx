@@ -104,6 +104,8 @@ function QueryDetailPageClient({ itemId }: QueryDetailPageClientProps) {
     )
   }
 
+  const claimApplyText = item.postType === '失物' ? '归还申请' : '认领申请'
+
   return (
     <>
       <Flex vertical gap={12} align="center" className="w-full">
@@ -127,7 +129,7 @@ function QueryDetailPageClient({ itemId }: QueryDetailPageClientProps) {
               className="h-11 min-w-32 rounded-lg px-6 text-base"
               onClick={() => setClaimOpen(true)}
             >
-              认领申请
+              {claimApplyText}
             </Button>
           </Flex>
         </Card>

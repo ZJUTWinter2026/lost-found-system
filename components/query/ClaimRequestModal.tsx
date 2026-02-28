@@ -15,10 +15,15 @@ interface ClaimRequestModalProps {
   onClose: () => void
 }
 
+function getClaimApplyTitle(postType: LostFoundItem['postType']) {
+  return postType === '失物' ? '归还申请' : '认领申请'
+}
+
 function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
   const submitClaimMutation = useSubmitClaimMutation()
   const [description, setDescription] = useState('')
   const [photos, setPhotos] = useState<string[]>([])
+  const claimApplyTitle = getClaimApplyTitle(item.postType)
 
   const handleClose = () => {
     setDescription('')
@@ -38,7 +43,7 @@ function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
         description,
         proofImages: photos.slice(0, 3),
       })
-      message.success('认领申请已提交，等待管理员审核')
+      message.success(`${claimApplyTitle}已提交，等待管理员审核`)
       handleClose()
     }
     catch (error) {
@@ -48,7 +53,7 @@ function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
 
   return (
     <Modal
-      title="认领申请"
+      title={claimApplyTitle}
       open={open}
       onCancel={handleClose}
       footer={null}

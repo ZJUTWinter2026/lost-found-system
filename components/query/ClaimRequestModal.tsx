@@ -1,7 +1,7 @@
 'use client'
 
-import type { ClaimAction, LostFoundItem } from './types'
-import { Button, Flex, Input, message, Modal, Segmented, Typography } from 'antd'
+import type { LostFoundItem } from './types'
+import { Button, Flex, Input, message, Modal, Typography } from 'antd'
 import { useState } from 'react'
 import PhotoUploader from '@/components/publish/PhotoUploader'
 import { useSubmitClaimMutation } from '@/hooks/queries/useLostFoundQueries'
@@ -15,18 +15,12 @@ interface ClaimRequestModalProps {
   onClose: () => void
 }
 
-function getDefaultAction(postType: LostFoundItem['postType']): ClaimAction {
-  return postType === '失物' ? '找回' : '归还'
-}
-
 function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
   const submitClaimMutation = useSubmitClaimMutation()
-  const [action, setAction] = useState<ClaimAction>(() => getDefaultAction(item.postType))
   const [description, setDescription] = useState('')
   const [photos, setPhotos] = useState<string[]>([])
 
   const handleClose = () => {
-    setAction(getDefaultAction(item.postType))
     setDescription('')
     setPhotos([])
     onClose()
@@ -40,10 +34,9 @@ function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
 
     try {
       await submitClaimMutation.mutateAsync({
-        itemId: item.id,
-        action,
-        detail: description,
-        photos: photos.slice(0, 3),
+        postId: item.id,
+        description,
+        proofImages: photos.slice(0, 3),
       })
       message.success('认领申请已提交，等待管理员审核')
       handleClose()
@@ -55,24 +48,14 @@ function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
 
   return (
     <Modal
-      title="认领与沟通"
+      title="认领申请"
       open={open}
       onCancel={handleClose}
       footer={null}
       destroyOnHidden
       width={640}
     >
-      <Flex vertical gap={14}>
-        <Segmented
-          block
-          value={action}
-          options={[
-            { label: '归还', value: '归还' },
-            { label: '找回', value: '找回' },
-          ]}
-          onChange={value => setAction(value as ClaimAction)}
-        />
-
+      <Flex vertical gap={14} style={{ marginTop: 18 }}>
         <Flex vertical gap={8}>
           <Text className="text-sm text-blue-900">物品额外特征或相关证明</Text>
           <TextArea

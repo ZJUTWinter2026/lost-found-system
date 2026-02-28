@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, Empty, Flex, List, Modal, Tag, Typography } from 'antd'
+import { Button, Card, Empty, Flex, List, Modal, Tag, Typography } from 'antd'
 import { useMemo } from 'react'
 import { formatDateTime, toTimestamp } from '@/components/query/utils'
 import { useAnnouncementListQuery } from '@/hooks/queries/useAnnouncementQueries'
@@ -65,23 +65,30 @@ function AnnouncementModal({ open, onClose }: AnnouncementModalProps) {
             locale={{ emptyText: <Empty description="暂无公告" /> }}
             dataSource={list}
             renderItem={item => (
-              <List.Item className="!px-0">
-                <Flex vertical gap={6} className="w-full rounded-lg border border-blue-100 bg-blue-50 p-3">
-                  <Flex align="center" justify="space-between" wrap gap={8}>
-                    <Text className="text-sm font-semibold text-blue-900">{item.title}</Text>
-                    <Tag color={resolveTypeColor(item.type)} className="!mr-0">
-                      {item.type || '公告'}
-                    </Tag>
+              <List.Item className="!px-0 hover:!bg-transparent">
+                <Card
+                  className="w-full rounded-lg"
+                  hoverable={false}
+                  style={{ backgroundColor: '#f5faff', borderColor: '#dbeafe', boxShadow: 'none', transition: 'none' }}
+                  styles={{ body: { padding: 16 } }}
+                >
+                  <Flex vertical gap={8}>
+                    <Flex align="center" justify="space-between" wrap gap={8}>
+                      <Text className="text-sm font-semibold text-blue-900">{item.title}</Text>
+                      <Tag color={resolveTypeColor(item.type)} className="!mr-0">
+                        {item.type || '公告'}
+                      </Tag>
+                    </Flex>
+                    <Paragraph className="!mb-0 !text-sm !leading-6 !text-blue-900/80">
+                      {item.content}
+                    </Paragraph>
+                    <Flex justify="end">
+                      <Text className="text-xs text-blue-900/60">
+                        {formatDateTime(item.created_at)}
+                      </Text>
+                    </Flex>
                   </Flex>
-                  <Paragraph className="!mb-0 !text-sm !text-blue-900/80">
-                    {item.content}
-                  </Paragraph>
-                  <Flex justify="end">
-                    <Text className="text-xs text-blue-900/60">
-                      {formatDateTime(item.created_at)}
-                    </Text>
-                  </Flex>
-                </Flex>
+                </Card>
               </List.Item>
             )}
           />

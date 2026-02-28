@@ -164,7 +164,7 @@ function QueryPageClient() {
   }
 
   const handleSelectItem = (itemId: string) => {
-    router.push(`/query/${itemId}`)
+    router.push(`/query/detail?itemId=${encodeURIComponent(itemId)}`)
   }
 
   return (

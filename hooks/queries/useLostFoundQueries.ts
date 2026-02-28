@@ -38,7 +38,7 @@ export function useSubmitClaimMutation() {
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.lostFound.lists() })
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.lostFound.detail(variables.itemId),
+        queryKey: queryKeys.lostFound.detail(String(variables.postId)),
       })
     },
   })

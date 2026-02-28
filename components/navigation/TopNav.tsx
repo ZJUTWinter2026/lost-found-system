@@ -31,7 +31,7 @@ function TopNav() {
   const handleLogout = () => {
     Modal.confirm({
       title: '确认退出登录？',
-      content: '当前为演示流程，确认后将返回登录页。',
+      content: '确认后将返回登录页。',
       okText: '确认退出',
       cancelText: '取消',
       okType: 'danger',

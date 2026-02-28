@@ -280,18 +280,20 @@ export const useLostFoundStore = create<LostFoundStore>(set => ({
   submitClaim: (payload) => {
     let isSubmitted = false
     set((state) => {
-      const target = state.items.find(item => item.id === payload.itemId)
+      const postId = String(payload.postId).trim()
+      const target = state.items.find(item => item.id === postId)
       if (!target)
         return state
 
+      const action = target.postType === '失物' ? '找回' : '归还'
       const newClaim: ClaimRequest = {
         id: createRecordId('CLAIM'),
         itemId: target.id,
         itemName: target.name,
-        action: payload.action,
-        requestCategory: payload.action === '找回' ? '失物' : '招领',
-        detail: payload.detail.trim(),
-        photos: payload.photos.slice(0, 3),
+        action,
+        requestCategory: action === '找回' ? '失物' : '招领',
+        detail: payload.description.trim(),
+        photos: payload.proofImages.slice(0, 3),
         createdAt: new Date().toISOString(),
         status: '待审核',
       }

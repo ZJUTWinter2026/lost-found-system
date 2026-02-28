@@ -58,10 +58,9 @@ export interface FeedbackRecord {
 }
 
 export interface SubmitClaimPayload {
-  itemId: string
-  action: ClaimAction
-  detail: string
-  photos: string[]
+  postId: string | number
+  description: string
+  proofImages: string[]
 }
 
 export interface SubmitFeedbackPayload {

@@ -34,7 +34,7 @@ function ItemList({ items, total, loading, onSelectItem }: ItemListProps) {
                 renderItem={item => (
                   <List.Item className="!border-none !px-0 !py-1">
                     <Card
-                      hoverable
+                      hoverable={false}
                       size="small"
                       role="button"
                       tabIndex={0}

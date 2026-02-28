@@ -156,7 +156,7 @@ export interface DeleteMyPostPayload {
 export interface ClaimApplyPayload {
   post_id: number
   description: string
-  proof_images: string[]
+  proof_images?: string[]
 }
 
 interface ClaimApplyData {
@@ -521,18 +521,19 @@ export function deleteMyPost(payload: DeleteMyPostPayload) {
 }
 
 export function submitClaimRequest(payload: SubmitClaimPayload) {
-  const postId = Number(payload.itemId)
+  const postId = Number(payload.postId)
+  const proofImages = payload.proofImages
+    .map(item => toText(item))
+    .filter(Boolean)
+    .slice(0, 3)
 
   return request<ClaimApplyData>({
     url: '/claim/apply',
     method: 'POST',
     data: {
       post_id: Number.isFinite(postId) ? postId : 0,
-      description: toLimitedRequiredText(payload.detail, 500),
-      proof_images: payload.photos
-        .map(item => toText(item))
-        .filter(Boolean)
-        .slice(0, 255),
+      description: toLimitedRequiredText(payload.description, 500),
+      ...(proofImages.length ? { proof_images: proofImages } : {}),
     },
   })
 }

@@ -5,7 +5,8 @@ import { ExclamationCircleFilled } from '@ant-design/icons'
 import { Button, Flex, message, Modal, Typography } from 'antd'
 import { usePathname, useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import FeedbackModal from './FeedbackModal'
+import { clearLoginSession } from '@/utils/auth'
+import AnnouncementModal from './AnnouncementModal'
 
 const { Title } = Typography
 
@@ -20,7 +21,7 @@ const ACTION_BUTTON_CLASSNAME = 'rounded-lg !h-11 !px-4 !text-base !font-medium 
 function TopNav() {
   const router = useRouter()
   const pathname = usePathname()
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [announcementOpen, setAnnouncementOpen] = useState(false)
 
   const activeNav = useMemo(
     () => NAV_ITEMS.find(item => pathname.startsWith(item.path))?.key ?? null,
@@ -30,12 +31,13 @@ function TopNav() {
   const handleLogout = () => {
     Modal.confirm({
       title: '确认退出登录？',
-      content: '当前为演示流程，确认后将返回登录页。',
+      content: '确认后将返回登录页。',
       okText: '确认退出',
       cancelText: '取消',
       okType: 'danger',
       icon: <ExclamationCircleFilled />,
       onOk: () => {
+        clearLoginSession()
         message.success('已退出登录（演示）')
         router.push('/login')
       },
@@ -50,8 +52,8 @@ function TopNav() {
         gap={12}
         className="z-20 shrink-0 border-b border-blue-100 bg-white/95 px-3 py-3 backdrop-blur sm:px-6 sm:py-4"
       >
-        <Flex align="center" className="shrink-0" style={{ paddingInlineStart: 16 }}>
-          <Title level={3} className="!mb-0 !text-blue-700">
+        <Flex align="center" className="shrink-0" style={{ paddingInlineStart: 24 }}>
+          <Title level={4} className="!mb-0 !text-blue-700">
             校园失物招领平台
           </Title>
         </Flex>
@@ -79,10 +81,10 @@ function TopNav() {
           <Button
             type="text"
             size="large"
-            onClick={() => setFeedbackOpen(true)}
+            onClick={() => setAnnouncementOpen(true)}
             className={ACTION_BUTTON_CLASSNAME}
           >
-            意见反馈
+            系统公告
           </Button>
           <Button
             type="text"
@@ -95,9 +97,9 @@ function TopNav() {
         </Flex>
       </Flex>
 
-      <FeedbackModal
-        open={feedbackOpen}
-        onClose={() => setFeedbackOpen(false)}
+      <AnnouncementModal
+        open={announcementOpen}
+        onClose={() => setAnnouncementOpen(false)}
       />
     </>
   )

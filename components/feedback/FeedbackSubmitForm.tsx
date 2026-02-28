@@ -1,38 +1,70 @@
 'use client'
 
-import { Button, Card, Checkbox, Flex, Input, message, Typography } from 'antd'
+import { Button, Card, Flex, Input, Radio, message, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import {
   FEEDBACK_TYPE_OPTIONS,
   FEEDBACK_TYPE_OTHER_VALUE,
 } from '@/components/query/constants'
+import { usePublicConfigQuery } from '@/hooks/queries/usePublicQueries'
 
 const { TextArea } = Input
 const { Text } = Typography
+const OTHER_TYPE_LABEL = '其它类型'
 
 interface FeedbackSubmitFormProps {
-  onSubmit: (payload: { types: string[], description: string }) => boolean | void
+  onSubmit: (payload: { types: string[], description: string }) => Promise<boolean | void> | boolean | void
   onCancel?: () => void
   submitText?: string
+  submitting?: boolean
 }
 
 function FeedbackSubmitForm({
   onSubmit,
   onCancel,
   submitText = '确认',
+  submitting = false,
 }: FeedbackSubmitFormProps) {
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([])
+  const publicConfigQuery = usePublicConfigQuery()
+  const [selectedType, setSelectedType] = useState<string>()
   const [otherTypeInput, setOtherTypeInput] = useState('')
   const [confirmedOtherType, setConfirmedOtherType] = useState('')
   const [feedbackDescription, setFeedbackDescription] = useState('')
+
+  const feedbackTypeOptions = useMemo(() => {
+    const configTypes = (publicConfigQuery.data?.feedbackTypes || [])
+      .map(type => type.trim())
+      .filter(Boolean)
+
+    if (!configTypes.length)
+      return FEEDBACK_TYPE_OPTIONS
+
+    const mappedOptions = configTypes.map((type) => {
+      if (type === OTHER_TYPE_LABEL || type === FEEDBACK_TYPE_OTHER_VALUE) {
+        return {
+          label: OTHER_TYPE_LABEL,
+          value: FEEDBACK_TYPE_OTHER_VALUE,
+        }
+      }
+
+      return {
+        label: type,
+        value: type,
+      }
+    })
+
+    return Array.from(
+      new Map(mappedOptions.map(option => [option.value, option])).values(),
+    )
+  }, [publicConfigQuery.data?.feedbackTypes])
 
   const trimmedOtherTypeInput = useMemo(
     () => otherTypeInput.trim(),
     [otherTypeInput],
   )
   const hasSelectedOtherType = useMemo(
-    () => selectedTypes.includes(FEEDBACK_TYPE_OTHER_VALUE),
-    [selectedTypes],
+    () => selectedType === FEEDBACK_TYPE_OTHER_VALUE,
+    [selectedType],
   )
   const isOtherTypeConfirmed = useMemo(
     () =>
@@ -40,17 +72,17 @@ function FeedbackSubmitForm({
       && confirmedOtherType === trimmedOtherTypeInput,
     [confirmedOtherType, trimmedOtherTypeInput],
   )
-  const resolvedTypeList = useMemo(
-    () =>
-      selectedTypes.flatMap(type =>
-        type === FEEDBACK_TYPE_OTHER_VALUE
-          ? (isOtherTypeConfirmed ? [confirmedOtherType] : [])
-          : [type],
-      ),
-    [confirmedOtherType, isOtherTypeConfirmed, selectedTypes],
-  )
+  const resolvedTypeList = useMemo(() => {
+    if (!selectedType)
+      return []
+
+    if (selectedType === FEEDBACK_TYPE_OTHER_VALUE)
+      return isOtherTypeConfirmed ? [confirmedOtherType] : []
+
+    return [selectedType]
+  }, [confirmedOtherType, isOtherTypeConfirmed, selectedType])
   const canSubmit = useMemo(() => {
-    if (!selectedTypes.length)
+    if (!selectedType)
       return false
 
     if (hasSelectedOtherType && !isOtherTypeConfirmed)
@@ -61,11 +93,11 @@ function FeedbackSubmitForm({
     hasSelectedOtherType,
     isOtherTypeConfirmed,
     resolvedTypeList.length,
-    selectedTypes.length,
+    selectedType,
   ])
 
   const resetState = () => {
-    setSelectedTypes([])
+    setSelectedType(undefined)
     setOtherTypeInput('')
     setConfirmedOtherType('')
     setFeedbackDescription('')
@@ -76,10 +108,10 @@ function FeedbackSubmitForm({
     onCancel?.()
   }
 
-  const handleTypeChange = (values: string[]) => {
-    setSelectedTypes(values)
+  const handleTypeChange = (value?: string) => {
+    setSelectedType(value)
 
-    if (!values.includes(FEEDBACK_TYPE_OTHER_VALUE)) {
+    if (value !== FEEDBACK_TYPE_OTHER_VALUE) {
       setOtherTypeInput('')
       setConfirmedOtherType('')
     }
@@ -96,18 +128,18 @@ function FeedbackSubmitForm({
   }
 
   const handleOtherTypeCancel = () => {
-    setSelectedTypes(prev => prev.filter(type => type !== FEEDBACK_TYPE_OTHER_VALUE))
+    setSelectedType(undefined)
     setOtherTypeInput('')
     setConfirmedOtherType('')
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) {
-      message.warning('请至少勾选一种投诉与反馈类型')
+      message.warning('请选择一种投诉与反馈类型')
       return
     }
 
-    const isSuccess = onSubmit({
+    const isSuccess = await onSubmit({
       types: resolvedTypeList,
       description: feedbackDescription.trim(),
     })
@@ -132,21 +164,21 @@ function FeedbackSubmitForm({
           <Text className="text-red-500">*</Text>
         </Flex>
         <Text className="text-xs text-blue-900/60">
-          请勾选投诉与反馈类型，至少选择一项。
+          请选择一种投诉与反馈类型。
         </Text>
-        <Checkbox.Group
-          value={selectedTypes}
-          onChange={values => handleTypeChange(values as string[])}
+        <Radio.Group
+          value={selectedType}
+          onChange={event => handleTypeChange(event.target.value as string)}
           className="w-full"
         >
           <Flex vertical gap={10}>
-            {FEEDBACK_TYPE_OPTIONS.map(option => (
-              <Checkbox key={option.value} value={option.value}>
+            {feedbackTypeOptions.map(option => (
+              <Radio key={option.value} value={option.value}>
                 {option.label}
-              </Checkbox>
+              </Radio>
             ))}
           </Flex>
-        </Checkbox.Group>
+        </Radio.Group>
       </Flex>
 
       {hasSelectedOtherType && (
@@ -212,9 +244,12 @@ function FeedbackSubmitForm({
         {onCancel && <Button onClick={handleCancel}>取消</Button>}
         <Button
           type="primary"
-          onClick={handleSubmit}
+          onClick={() => {
+            void handleSubmit()
+          }}
           className="rounded-lg"
-          disabled={!canSubmit}
+          disabled={!canSubmit || submitting}
+          loading={submitting}
         >
           {submitText}
         </Button>

@@ -3,11 +3,12 @@
 import type { QueryFilters } from './types'
 import { Button, Card, Flex, Input, message, Modal, Select, Typography } from 'antd'
 import { useMemo, useState } from 'react'
+import { usePublicConfigQuery } from '@/hooks/queries/usePublicQueries'
 import {
+  CAMPUS_OPTIONS,
   ITEM_TYPE_OPTIONS,
-  ITEM_TYPE_OPTIONS_WITH_OTHER,
   ITEM_TYPE_OTHER_VALUE,
-  LOCATION_OPTIONS,
+  PUBLISH_TYPE_OPTIONS,
   STATUS_OPTIONS,
   TIME_RANGE_OPTIONS,
 } from './constants'
@@ -33,26 +34,42 @@ function FilterPanel({
 }: FilterPanelProps) {
   const [otherTypeOpen, setOtherTypeOpen] = useState(false)
   const [otherTypeInput, setOtherTypeInput] = useState('')
+  const publicConfigQuery = usePublicConfigQuery()
 
-  const hasAnyFilter = useMemo(
-    () => Object.values(filters).some(Boolean),
-    [filters],
+  const baseItemTypeOptions = useMemo(() => {
+    const itemTypes = (publicConfigQuery.data?.itemTypes || [])
+      .map(item => item.trim())
+      .filter(Boolean)
+
+    if (!itemTypes.length)
+      return ITEM_TYPE_OPTIONS
+
+    return itemTypes.map(itemType => ({
+      label: itemType,
+      value: itemType,
+    }))
+  }, [publicConfigQuery.data?.itemTypes])
+
+  const itemTypeOptionsWithOther = useMemo(
+    () => [...baseItemTypeOptions, { label: '其它', value: ITEM_TYPE_OTHER_VALUE }],
+    [baseItemTypeOptions],
   )
+
   const hasCustomItemType = useMemo(
     () =>
       !!filters.itemType
-      && !ITEM_TYPE_OPTIONS.some(option => option.value === filters.itemType),
-    [filters.itemType],
+      && !baseItemTypeOptions.some(option => option.value === filters.itemType),
+    [baseItemTypeOptions, filters.itemType],
   )
   const itemTypeOptions = useMemo(() => {
     if (!hasCustomItemType || !filters.itemType)
-      return ITEM_TYPE_OPTIONS_WITH_OTHER
+      return itemTypeOptionsWithOther
 
     return [
       { label: `其它：${filters.itemType}`, value: filters.itemType },
-      ...ITEM_TYPE_OPTIONS_WITH_OTHER,
+      ...itemTypeOptionsWithOther,
     ]
-  }, [filters.itemType, hasCustomItemType])
+  }, [filters.itemType, hasCustomItemType, itemTypeOptionsWithOther])
 
   const patchFilters = (patch: Partial<QueryFilters>) => {
     onFiltersChange({
@@ -101,7 +118,18 @@ function FilterPanel({
       >
         <Flex vertical gap={10}>
           <Flex align="end" gap={8} wrap>
-            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
+            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(33.333%-6px)]">
+              <FilterLabel text="发布类型" />
+              <Select
+                value={filters.publishType}
+                allowClear
+                placeholder="请选择"
+                options={PUBLISH_TYPE_OPTIONS}
+                onChange={value => patchFilters({ publishType: value })}
+              />
+            </Flex>
+
+            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(33.333%-6px)]">
               <FilterLabel text="物品类型" />
               <Select
                 value={filters.itemType}
@@ -112,18 +140,29 @@ function FilterPanel({
               />
             </Flex>
 
-            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
-              <FilterLabel text="丢失/拾取地点" />
+            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(33.333%-6px)]">
+              <FilterLabel text="校区" />
               <Select
-                value={filters.location}
+                value={filters.campus}
                 allowClear
                 placeholder="请选择"
-                options={LOCATION_OPTIONS}
-                onChange={value => patchFilters({ location: value })}
+                options={CAMPUS_OPTIONS}
+                onChange={value => patchFilters({ campus: value })}
               />
             </Flex>
 
-            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
+            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(33.333%-6px)]">
+              <FilterLabel text="丢失/拾取地点" />
+              <Input
+                value={filters.location}
+                allowClear
+                maxLength={100}
+                placeholder="请输入地点"
+                onChange={event => patchFilters({ location: event.target.value || undefined })}
+              />
+            </Flex>
+
+            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(33.333%-6px)]">
               <FilterLabel text="时间范围" />
               <Select
                 value={filters.timeRange}
@@ -134,7 +173,7 @@ function FilterPanel({
               />
             </Flex>
 
-            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(25%-6px)]">
+            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(33.333%-6px)]">
               <FilterLabel text="物品状态" />
               <Select
                 value={filters.status}
@@ -150,7 +189,6 @@ function FilterPanel({
             <Button
               type="primary"
               className="rounded-lg"
-              disabled={!hasAnyFilter}
               onClick={onView}
             >
               查看
@@ -171,13 +209,13 @@ function FilterPanel({
         <Flex vertical gap={8}>
           <Input
             value={otherTypeInput}
-            placeholder="请输入物品类型（最多15字）"
-            maxLength={15}
+            placeholder="请输入物品类型（最多20字）"
+            maxLength={20}
             onChange={event => setOtherTypeInput(event.target.value)}
           />
           <Flex justify="end">
             <Text className="text-xs text-blue-900/50">
-              {`${otherTypeInput.length} / 15`}
+              {`${otherTypeInput.length} / 20`}
             </Text>
           </Flex>
         </Flex>

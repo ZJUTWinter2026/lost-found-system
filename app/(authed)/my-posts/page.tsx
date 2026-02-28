@@ -1,5 +1,6 @@
 'use client'
 
+import type { LostFoundDetailData, PostCampus, UpdateMyPostPayload } from '@/api/modules/lostFound'
 import type {
   PublishEditablePayload,
   PublishRecord,
@@ -30,11 +31,23 @@ import {
   Typography,
 } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
+import {
+  getPostDetailData,
+  mapMyPostListItemToPublishRecord,
+  mapPostDetailToPublishRecord,
+} from '@/api/modules/lostFound'
+import ClaimReviewModal from '@/components/publish/ClaimReviewModal'
 import { CONTACT_PHONE_PATTERN } from '@/components/publish/constants'
 import PhotoUploader from '@/components/publish/PhotoUploader'
 import { ITEM_TYPE_OPTIONS, LOCATION_OPTIONS } from '@/components/query/constants'
 import { formatDateTime, toTimestamp } from '@/components/query/utils'
-import { useLostFoundStore } from '@/stores/lostFoundStore'
+import { usePublicConfigQuery } from '@/hooks/queries/usePublicQueries'
+import {
+  useCancelMyPostMutation,
+  useDeleteMyPostMutation,
+  useMyPostListQuery,
+  useUpdateMyPostMutation,
+} from '@/hooks/queries/useUserPostQueries'
 
 const { Text } = Typography
 const { TextArea } = Input
@@ -60,6 +73,7 @@ interface StatusSectionProps {
   onEdit: (record: PublishRecord) => void
   onDelete: (record: PublishRecord) => void
   onSupplement: (record: PublishRecord) => void
+  onReviewClaim: (record: PublishRecord) => void
   onCancelPublish: (record: PublishRecord) => void
 }
 
@@ -67,8 +81,10 @@ interface RecordEditorModalProps {
   open: boolean
   mode: EditorMode
   record?: PublishRecord
+  itemTypePresetOptions: Array<{ label: string, value: string }>
+  submitting?: boolean
   onCancel: () => void
-  onSubmit: (payload: PublishEditablePayload) => void
+  onSubmit: (payload: PublishEditablePayload) => Promise<void> | void
 }
 
 const STATUS_ORDER: PublishReviewStatus[] = ['待审核', '已通过', '已匹配', '已认领', '已驳回', '已取消']
@@ -82,7 +98,7 @@ const STATUS_TAG_COLOR: Record<PublishReviewStatus, string> = {
   已取消: 'default',
 }
 
-const ITEM_TYPE_AUTOCOMPLETE_OPTIONS = ITEM_TYPE_OPTIONS.map(option => ({
+const DEFAULT_ITEM_TYPE_AUTOCOMPLETE_OPTIONS = ITEM_TYPE_OPTIONS.map(option => ({
   label: option.label,
   value: option.value,
 }))
@@ -104,6 +120,27 @@ function toDateTimeLocalValue(value?: string) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+function toIsoDateText(value?: string) {
+  if (!value)
+    return new Date().toISOString()
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString()
+}
+
+function resolveCampus(value: string): PostCampus {
+  const normalized = value.trim()
+  const upper = normalized.toUpperCase()
+  if (upper === 'ZHAO_HUI' || normalized === '朝晖')
+    return 'ZHAO_HUI'
+  if (upper === 'PING_FENG' || normalized === '屏峰')
+    return 'PING_FENG'
+  if (upper === 'MO_GAN_SHAN' || normalized === '莫干山')
+    return 'MO_GAN_SHAN'
+
+  return 'PING_FENG'
+}
+
 function buildMergedAutocompleteOptions(value?: string, presetOptions: Array<{ label: string, value: string }> = []) {
   if (!value)
     return presetOptions
@@ -119,6 +156,8 @@ function RecordEditorModal({
   open,
   mode,
   record,
+  itemTypePresetOptions,
+  submitting,
   onCancel,
   onSubmit,
 }: RecordEditorModalProps) {
@@ -129,8 +168,8 @@ function RecordEditorModal({
   const location = Form.useWatch('location', form)
 
   const itemTypeOptions = useMemo(
-    () => buildMergedAutocompleteOptions(itemType, ITEM_TYPE_AUTOCOMPLETE_OPTIONS),
-    [itemType],
+    () => buildMergedAutocompleteOptions(itemType, itemTypePresetOptions),
+    [itemType, itemTypePresetOptions],
   )
   const locationOptions = useMemo(
     () => buildMergedAutocompleteOptions(location, LOCATION_AUTOCOMPLETE_OPTIONS),
@@ -168,7 +207,7 @@ function RecordEditorModal({
   const handleConfirm = async () => {
     try {
       const values = await form.validateFields()
-      onSubmit({
+      await onSubmit({
         itemType: values.itemType ?? '',
         location: values.location ?? '',
         itemName: values.itemName ?? '',
@@ -192,6 +231,7 @@ function RecordEditorModal({
       open={open}
       onCancel={onCancel}
       onOk={handleConfirm}
+      confirmLoading={submitting}
       okText="确认"
       cancelText="取消"
       width={760}
@@ -340,6 +380,7 @@ function StatusSection({
   onEdit,
   onDelete,
   onSupplement,
+  onReviewClaim,
   onCancelPublish,
 }: StatusSectionProps) {
   return (
@@ -376,8 +417,10 @@ function StatusSection({
               <Text className="block text-sm text-blue-900/80">{`类型：${record.itemType}`}</Text>
               <Text className="block text-sm text-blue-900/80">{`地点：${record.location}`}</Text>
               <Text className="block text-sm text-blue-900/80">{`发生时间：${formatDateTime(record.occurredAt)}`}</Text>
-              <Text className="block text-sm text-blue-900/80">{`物品特征：${record.features}`}</Text>
-              <Text className="block text-sm text-blue-900/80">{`联系人：${record.contactName} ${record.contactPhone}`}</Text>
+              <Text className="block text-sm text-blue-900/80">{`物品特征：${record.features || '-'}`}</Text>
+              <Text className="block text-sm text-blue-900/80">
+                {`联系人：${record.contactName || '-'}${record.contactPhone ? ` ${record.contactPhone}` : ''}`}
+              </Text>
               {record.hasReward && record.rewardRemark && (
                 <Text className="block text-sm text-amber-700">{`悬赏说明：${record.rewardRemark}`}</Text>
               )}
@@ -415,6 +458,13 @@ function StatusSection({
                     <>
                       <Button
                         size="small"
+                        className="rounded-lg"
+                        onClick={() => onReviewClaim(record)}
+                      >
+                        认领申请
+                      </Button>
+                      <Button
+                        size="small"
                         icon={<FileTextOutlined />}
                         className="rounded-lg"
                         onClick={() => onSupplement(record)}
@@ -443,16 +493,41 @@ function StatusSection({
 }
 
 function MyPostsPage() {
-  const publishRecords = useLostFoundStore(state => state.publishRecords)
-  const updatePublishRecord = useLostFoundStore(state => state.updatePublishRecord)
-  const deletePublishRecord = useLostFoundStore(state => state.deletePublishRecord)
-  const supplementPublishRecord = useLostFoundStore(state => state.supplementPublishRecord)
-  const cancelPublishRecord = useLostFoundStore(state => state.cancelPublishRecord)
+  const myPostListQuery = useMyPostListQuery({ page: 1, page_size: 10 })
+  const publicConfigQuery = usePublicConfigQuery()
+  const updateMyPostMutation = useUpdateMyPostMutation()
+  const deleteMyPostMutation = useDeleteMyPostMutation()
+  const cancelMyPostMutation = useCancelMyPostMutation()
   const [activeTab, setActiveTab] = useState<PostTypeTab>('失物')
+  const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null)
+  const [editorSubmitting, setEditorSubmitting] = useState(false)
   const [editorState, setEditorState] = useState<{
     mode: EditorMode
     record: PublishRecord
+    detail: LostFoundDetailData
   } | null>(null)
+  const [claimReviewRecord, setClaimReviewRecord] = useState<PublishRecord | null>(null)
+  const publishRecords = useMemo(
+    () => (myPostListQuery.data?.list || []).map(mapMyPostListItemToPublishRecord),
+    [myPostListQuery.data?.list],
+  )
+  const itemTypePresetOptions = useMemo(() => {
+    const itemTypes = (publicConfigQuery.data?.itemTypes || [])
+      .map(type => type.trim())
+      .filter(Boolean)
+
+    if (!itemTypes.length)
+      return DEFAULT_ITEM_TYPE_AUTOCOMPLETE_OPTIONS
+
+    return itemTypes.map(type => ({
+      label: type,
+      value: type,
+    }))
+  }, [publicConfigQuery.data?.itemTypes])
+  const presetItemTypeValues = useMemo(
+    () => itemTypePresetOptions.map(option => option.value),
+    [itemTypePresetOptions],
+  )
 
   const { lostRecords, foundRecords } = useMemo(() => {
     const lost = publishRecords.filter(record => record.postType === '失物')
@@ -478,6 +553,25 @@ function MyPostsPage() {
     [currentRecords],
   )
 
+  const openEditor = async (mode: EditorMode, record: PublishRecord) => {
+    setLoadingDetailId(record.id)
+
+    try {
+      const detail = await getPostDetailData(record.id)
+      setEditorState({
+        mode,
+        record: mapPostDetailToPublishRecord(detail),
+        detail,
+      })
+    }
+    catch (error) {
+      message.error(error instanceof Error ? error.message : '加载详情失败，请稍后重试')
+    }
+    finally {
+      setLoadingDetailId(null)
+    }
+  }
+
   const handleDelete = (record: PublishRecord) => {
     Modal.confirm({
       title: '确认删除该条发布信息？',
@@ -486,14 +580,14 @@ function MyPostsPage() {
       cancelText: '取消',
       okType: 'danger',
       icon: <ExclamationCircleFilled />,
-      onOk: () => {
-        const ok = deletePublishRecord(record.id)
-        if (!ok) {
-          message.error('仅“待审核”记录可删除')
-          return
+      onOk: async () => {
+        try {
+          await deleteMyPostMutation.mutateAsync({ post_id: Number(record.id) })
+          message.success('已删除该条发布信息')
         }
-
-        message.success('已删除该条发布信息')
+        catch (error) {
+          message.error(error instanceof Error ? error.message : '删除失败，请稍后重试')
+        }
       },
     })
   }
@@ -506,32 +600,59 @@ function MyPostsPage() {
       cancelText: '继续保留',
       okType: 'danger',
       icon: <ExclamationCircleFilled />,
-      onOk: () => {
-        const ok = cancelPublishRecord(record.id)
-        if (!ok) {
-          message.error('仅“已通过”记录可取消发布')
-          return
+      onOk: async () => {
+        try {
+          await cancelMyPostMutation.mutateAsync({
+            post_id: Number(record.id),
+            reason: '用户主动取消发布',
+          })
+          message.success('已取消发布')
         }
-
-        message.success('已取消发布')
+        catch (error) {
+          message.error(error instanceof Error ? error.message : '取消发布失败，请稍后重试')
+        }
       },
     })
   }
 
-  const handleEditorSubmit = (payload: PublishEditablePayload) => {
+  const handleEditorSubmit = async (payload: PublishEditablePayload) => {
     if (!editorState)
       return
 
-    const action = editorState.mode === 'edit' ? updatePublishRecord : supplementPublishRecord
-    const ok = action(editorState.record.id, payload)
+    const normalizedItemType = payload.itemType.trim()
+    const isPresetType = presetItemTypeValues.includes(normalizedItemType)
+    const item_type = isPresetType ? normalizedItemType : '其它'
+    const item_type_other = isPresetType ? '' : normalizedItemType
 
-    if (!ok) {
-      message.error(editorState.mode === 'edit' ? '仅“待审核”记录可修改' : '仅“已通过”记录可补充说明')
-      return
+    const updatePayload: UpdateMyPostPayload = {
+      post_id: Number(editorState.record.id),
+      item_name: payload.itemName.trim(),
+      item_type,
+      item_type_other,
+      campus: resolveCampus(editorState.detail.campus) as PostCampus,
+      location: payload.location.trim(),
+      storage_location: editorState.detail.storage_location.trim() || payload.location.trim(),
+      event_time: toIsoDateText(payload.occurredAt),
+      features: payload.features.trim(),
+      contact_name: payload.contactName.trim(),
+      contact_phone: payload.contactPhone.trim(),
+      has_reward: payload.hasReward,
+      reward_description: payload.hasReward ? (payload.rewardRemark ?? '').trim() : '',
+      images: payload.photos.slice(0, 3),
     }
 
-    message.success(editorState.mode === 'edit' ? '修改成功，已同步更新' : '补充说明成功，已同步更新')
-    setEditorState(null)
+    setEditorSubmitting(true)
+    try {
+      await updateMyPostMutation.mutateAsync(updatePayload)
+      message.success(editorState.mode === 'edit' ? '修改成功，已同步更新' : '补充说明成功，已同步更新')
+      setEditorState(null)
+    }
+    catch (error) {
+      message.error(error instanceof Error ? error.message : '提交失败，请稍后重试')
+    }
+    finally {
+      setEditorSubmitting(false)
+    }
   }
 
   return (
@@ -554,20 +675,44 @@ function MyPostsPage() {
             onChange={value => setActiveTab(value as PostTypeTab)}
           />
 
-          {!currentRecords.length && (
+          {myPostListQuery.isPending && (
+            <Flex justify="center" className="py-8">
+              <Text className="text-sm text-blue-900/70">加载中...</Text>
+            </Flex>
+          )}
+
+          {myPostListQuery.isError && (
+            <Flex vertical align="center" gap={8} className="py-4">
+              <Text className="text-sm text-red-500">
+                {myPostListQuery.error instanceof Error
+                  ? myPostListQuery.error.message
+                  : '加载失败，请稍后重试'}
+              </Text>
+              <Button className="rounded-lg" onClick={() => myPostListQuery.refetch()}>
+                重试
+              </Button>
+            </Flex>
+          )}
+
+          {!myPostListQuery.isPending && !myPostListQuery.isError && !currentRecords.length && (
             <Empty description={`暂无${activeTab}记录`} />
           )}
 
-          {!!currentRecords.length && (
+          {!myPostListQuery.isPending && !myPostListQuery.isError && !!currentRecords.length && (
             <Flex vertical gap={10}>
               {groupedRecords.map(group => (
                 <StatusSection
                   key={group.status}
                   status={group.status}
                   records={group.records}
-                  onEdit={record => setEditorState({ mode: 'edit', record })}
+                  onEdit={(record) => {
+                    void openEditor('edit', record)
+                  }}
                   onDelete={handleDelete}
-                  onSupplement={record => setEditorState({ mode: 'supplement', record })}
+                  onReviewClaim={setClaimReviewRecord}
+                  onSupplement={(record) => {
+                    void openEditor('supplement', record)
+                  }}
                   onCancelPublish={handleCancelPublish}
                 />
               ))}
@@ -580,8 +725,17 @@ function MyPostsPage() {
         open={!!editorState}
         mode={editorState?.mode ?? 'edit'}
         record={editorState?.record}
+        itemTypePresetOptions={itemTypePresetOptions}
+        submitting={editorSubmitting || loadingDetailId === editorState?.record.id}
         onCancel={() => setEditorState(null)}
         onSubmit={handleEditorSubmit}
+      />
+
+      <ClaimReviewModal
+        open={!!claimReviewRecord}
+        postId={claimReviewRecord?.id}
+        postName={claimReviewRecord?.itemName}
+        onClose={() => setClaimReviewRecord(null)}
       />
     </Flex>
   )

@@ -8,18 +8,21 @@ const { Text } = Typography
 
 interface ItemListProps {
   items: LostFoundItem[]
+  total?: number
+  loading?: boolean
   onSelectItem: (itemId: string) => void
 }
 
-function ItemList({ items, onSelectItem }: ItemListProps) {
+function ItemList({ items, total, loading, onSelectItem }: ItemListProps) {
   return (
     <Card
       className="w-full max-w-5xl rounded-lg border-blue-100"
       styles={{ body: { padding: 12 } }}
+      loading={loading}
       title={(
         <Flex align="center" justify="space-between">
           <Text className="text-base font-medium text-blue-700">物品信息列表</Text>
-          <Text className="text-xs text-blue-900/60">{`共 ${items.length} 条`}</Text>
+          <Text className="text-xs text-blue-900/60">{`共 ${total ?? items.length} 条`}</Text>
         </Flex>
       )}
     >
@@ -31,7 +34,7 @@ function ItemList({ items, onSelectItem }: ItemListProps) {
                 renderItem={item => (
                   <List.Item className="!border-none !px-0 !py-1">
                     <Card
-                      hoverable
+                      hoverable={false}
                       size="small"
                       role="button"
                       tabIndex={0}

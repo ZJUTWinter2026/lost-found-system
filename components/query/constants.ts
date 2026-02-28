@@ -1,4 +1,11 @@
-import type { FeedbackRecord, ItemStatus, LostFoundItem, TimeRangeValue } from './types'
+import type {
+  CampusCode,
+  FeedbackRecord,
+  ItemPostType,
+  ItemStatus,
+  LostFoundItem,
+  TimeRangeValue,
+} from './types'
 
 const HOUR_IN_MILLISECONDS = 60 * 60 * 1000
 
@@ -20,6 +27,17 @@ export const ITEM_TYPE_OPTIONS = [
 export const ITEM_TYPE_OPTIONS_WITH_OTHER = [
   ...ITEM_TYPE_OPTIONS,
   { label: '其它', value: ITEM_TYPE_OTHER_VALUE },
+]
+
+export const PUBLISH_TYPE_OPTIONS: Array<{ label: ItemPostType, value: ItemPostType }> = [
+  { label: '失物', value: '失物' },
+  { label: '招领', value: '招领' },
+]
+
+export const CAMPUS_OPTIONS: Array<{ label: string, value: CampusCode }> = [
+  { label: '朝晖', value: 'ZHAO_HUI' },
+  { label: '屏峰', value: 'PING_FENG' },
+  { label: '莫干山', value: 'MO_GAN_SHAN' },
 ]
 
 export const LOCATION_OPTIONS = [

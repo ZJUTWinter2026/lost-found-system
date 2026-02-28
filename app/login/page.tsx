@@ -1,16 +1,39 @@
 'use client'
 
+import type { RuleObject } from 'antd/es/form'
 import { animate } from 'animejs'
 import { Button, Card, Flex, Form, Input, message, Typography } from 'antd'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import ChangePasswordModal from '@/components/navigation/ChangePasswordModal'
+import { useLoginMutation } from '@/hooks/queries/useUserAuthMutations'
+import { persistLoginSession } from '@/utils/auth'
 
 const { Text, Title } = Typography
+
+interface LoginFormValues {
+  username: string
+  password: string
+}
+
+function validateUsername(_: RuleObject, value: string) {
+  if (!value)
+    return Promise.reject(new Error('请输入账号'))
+
+  const trimmed = value.trim()
+  if (!trimmed)
+    return Promise.reject(new Error('请输入有效账号'))
+
+  return Promise.resolve()
+}
 
 function LoginPage() {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const formItemStyle = { marginBottom: 12 }
   const router = useRouter()
+  const loginMutation = useLoginMutation()
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [needUpdateAfterLogin, setNeedUpdateAfterLogin] = useState(false)
 
   useEffect(() => {
     const root = rootRef.current
@@ -36,12 +59,38 @@ function LoginPage() {
     }
   }, [])
 
-  const handleLoginSuccess = () => {
-    message.success({
-      content: '登录成功，正在进入系统',
-      duration: 1,
-      onClose: () => router.push('/query'),
-    })
+  const handleLogin = (values: LoginFormValues) => {
+    const username = values.username.trim()
+    loginMutation.mutate(
+      {
+        username,
+        password: values.password,
+      },
+      {
+        onSuccess: (result) => {
+          persistLoginSession({
+            id: result.id,
+            needUpdate: result.need_update,
+            userType: result.user_type,
+          })
+
+          if (result.need_update) {
+            setNeedUpdateAfterLogin(true)
+            message.warning('登录成功，请点击下方“忘记密码”完成改密')
+            return
+          }
+
+          message.success({
+            content: '登录成功，正在进入系统',
+            duration: 1,
+            onClose: () => router.push('/query'),
+          })
+        },
+        onError: (error) => {
+          message.error(error instanceof Error ? error.message : '登录失败，请稍后重试')
+        },
+      },
+    )
   }
 
   return (
@@ -81,7 +130,7 @@ function LoginPage() {
               <Title
                 level={2}
                 data-animate="rise"
-                className="!mb-0 !text-2xl !font-semibold !text-zinc-900"
+                className="!my-0 !text-2xl !font-semibold !text-zinc-900"
               >
                 校园失物招领平台
               </Title>
@@ -92,28 +141,35 @@ function LoginPage() {
               layout="vertical"
               requiredMark={false}
               colon={false}
-              onFinish={handleLoginSuccess}
+              onFinish={handleLogin}
             >
               <Form.Item
                 label="账号"
-                name="account"
+                name="username"
                 style={formItemStyle}
+                rules={[{ validator: validateUsername }]}
               >
                 <Input
                   size="large"
-                  placeholder="学号 / 工号"
+                  placeholder="请输入账号"
                   autoComplete="username"
+                  maxLength={20}
                 />
               </Form.Item>
               <Form.Item
                 label="密码"
                 name="password"
                 style={formItemStyle}
+                rules={[
+                  { required: true, message: '请输入密码' },
+                  { min: 6, max: 18, message: '密码长度需为6-18位' },
+                ]}
               >
                 <Input.Password
                   size="large"
                   placeholder="请输入密码"
                   autoComplete="current-password"
+                  maxLength={18}
                 />
               </Form.Item>
               <Flex className="pt-2">
@@ -123,14 +179,36 @@ function LoginPage() {
                   size="large"
                   block
                   className="h-12"
+                  loading={loginMutation.isPending}
                 >
                   登录
+                </Button>
+              </Flex>
+              <Flex justify="end" className="pt-1">
+                <Button
+                  type="link"
+                  className="!px-0"
+                  onClick={() => setPasswordModalOpen(true)}
+                >
+                  忘记密码
                 </Button>
               </Flex>
             </Form>
           </Flex>
         </Card>
       </Flex>
+
+      <ChangePasswordModal
+        open={passwordModalOpen}
+        onClose={() => setPasswordModalOpen(false)}
+        onUpdated={() => {
+          setPasswordModalOpen(false)
+          if (needUpdateAfterLogin) {
+            setNeedUpdateAfterLogin(false)
+            router.push('/query')
+          }
+        }}
+      />
     </div>
   )
 }

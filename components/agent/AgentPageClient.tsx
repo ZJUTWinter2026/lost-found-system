@@ -5,6 +5,7 @@ import type { ComponentRef } from 'react'
 import type { AgentStreamEvent } from '@/api/modules/agent'
 import { PlusOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons'
 import { Bubble, Conversations, Sender, Welcome } from '@ant-design/x'
+import XMarkdown from '@ant-design/x-markdown'
 import { useQueryClient } from '@tanstack/react-query'
 import { Avatar, Button, Card, Flex, message, Spin, Typography } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -52,6 +53,16 @@ function createSystemBubbleItem(content: string): BubbleItemType {
   }
 }
 
+function toMarkdownContent(content: unknown) {
+  if (typeof content === 'string')
+    return content
+
+  if (content === undefined || content === null)
+    return ''
+
+  return String(content)
+}
+
 function AgentPageClient() {
   const queryClient = useQueryClient()
   const bubbleListRef = useRef<ComponentRef<typeof Bubble.List> | null>(null)
@@ -71,12 +82,21 @@ function AgentPageClient() {
 
   const roleConfig = useMemo(
     () => ({
-      ai: {
+      ai: (item: BubbleItemType) => ({
         placement: 'start' as const,
         variant: 'shadow' as const,
         shape: 'default' as const,
         avatar: <Avatar size={28} icon={<RobotOutlined />} className="!bg-blue-600" />,
-      },
+        typing: false,
+        contentRender: (content: unknown) => (
+          <XMarkdown
+            content={toMarkdownContent(content)}
+            streaming={{ hasNextChunk: !!item.streaming }}
+            className="text-blue-900"
+            openLinksInNewTab
+          />
+        ),
+      }),
       user: {
         placement: 'end' as const,
         variant: 'filled' as const,
@@ -85,6 +105,13 @@ function AgentPageClient() {
       },
       system: {
         variant: 'borderless' as const,
+        contentRender: (content: unknown) => (
+          <XMarkdown
+            content={toMarkdownContent(content)}
+            className="text-blue-900"
+            openLinksInNewTab
+          />
+        ),
       },
     }),
     [],

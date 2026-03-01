@@ -229,6 +229,8 @@ function PublishPage() {
 
     form.setFieldsValue({
       ...draft,
+      postType: draft.postType ?? '失物',
+      campus: draft.campus ?? 'PING_FENG',
       occurredAt: toDateValue(draft.occurredAt),
     })
     queueMicrotask(() => {
@@ -342,7 +344,7 @@ function PublishPage() {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ hasReward: false, campus: 'PING_FENG' }}
+          initialValues={{ hasReward: false, campus: 'PING_FENG', postType: '失物' }}
           onValuesChange={() => setSubmitted(false)}
         >
           <Flex vertical gap={12}>

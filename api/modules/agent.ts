@@ -1,3 +1,4 @@
+import { handleAccountDisabled, isAccountDisabledCode } from '@/api/accountDisabled'
 import { request } from '@/api/request'
 import { ApiRequestError } from '@/api/types'
 
@@ -185,6 +186,8 @@ async function resolveStreamError(response: Response) {
 
     const message = toOptionalText(payload.message) || fallbackMessage
     const code = typeof payload.code === 'number' ? payload.code : undefined
+    if (isAccountDisabledCode(code))
+      handleAccountDisabled()
     return new ApiRequestError(message, { code, status })
   }
   catch {

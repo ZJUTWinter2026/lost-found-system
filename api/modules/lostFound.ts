@@ -23,7 +23,6 @@ export interface LostFoundListParams {
   item_type?: string
   campus?: PostCampus
   location?: string
-  status?: PostStatus
   start_time?: string
   end_time?: string
   page?: number
@@ -415,7 +414,6 @@ export function getLostFoundList(params: LostFoundListParams = {}) {
       ...params,
       item_type: toLimitedText(params.item_type, 20),
       location: toLimitedText(params.location, 100),
-      status: params.status,
       page,
       page_size: pageSize,
     },

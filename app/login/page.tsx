@@ -3,7 +3,7 @@
 import type { RuleObject } from 'antd/es/form'
 import { animate } from 'animejs'
 import { Button, Card, Flex, Form, Input, message, Typography } from 'antd'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import ChangePasswordModal from '@/components/navigation/ChangePasswordModal'
 import ForgotPasswordModal from '@/components/navigation/ForgotPasswordModal'
@@ -34,7 +34,6 @@ function LoginPage() {
   const formItemStyle = { marginBottom: 12 }
   const [form] = Form.useForm<LoginFormValues>()
   const router = useRouter()
-  const searchParams = useSearchParams()
   const loginMutation = useLoginMutation()
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
@@ -67,12 +66,13 @@ function LoginPage() {
   useEffect(() => {
     if (disabledTipShownRef.current)
       return
+    const searchParams = new URLSearchParams(window.location.search)
     if (searchParams.get('reason') !== 'disabled')
       return
 
     disabledTipShownRef.current = true
     message.warning('账号已被禁用，请联系管理员处理')
-  }, [searchParams])
+  }, [])
 
   const handleLogin = (values: LoginFormValues) => {
     const username = values.username.trim()

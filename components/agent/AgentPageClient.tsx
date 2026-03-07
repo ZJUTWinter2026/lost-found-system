@@ -2,7 +2,6 @@
 
 import type { BubbleItemType, ConversationItemType } from '@ant-design/x'
 import type { ComponentRef } from 'react'
-import type { AgentStreamEvent } from '@/api/modules/agent'
 import { PlusOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons'
 import { Bubble, Conversations, Sender, Welcome } from '@ant-design/x'
 import XMarkdown from '@ant-design/x-markdown'
@@ -18,7 +17,6 @@ import {
 } from '@/hooks/queries/useAgentQueries'
 
 const { Text } = Typography
-const TOOL_RESULT_MAX_LENGTH = 180
 
 function toDisplayText(value: string, fallback: string) {
   const normalized = value.trim()
@@ -30,27 +28,8 @@ function toSessionTimeLabel(value: string) {
   return normalized || '刚刚更新'
 }
 
-function toToolResultSummary(value: string) {
-  const normalized = value.replace(/\s+/g, ' ').trim()
-  if (!normalized)
-    return ''
-
-  if (normalized.length <= TOOL_RESULT_MAX_LENGTH)
-    return normalized
-
-  return `${normalized.slice(0, TOOL_RESULT_MAX_LENGTH)}...`
-}
-
 function createBubbleKey(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-function createSystemBubbleItem(content: string): BubbleItemType {
-  return {
-    key: createBubbleKey('system'),
-    role: 'system',
-    content,
-  }
 }
 
 function toMarkdownContent(content: unknown) {
@@ -102,16 +81,6 @@ function AgentPageClient() {
         variant: 'filled' as const,
         shape: 'default' as const,
         avatar: <Avatar size={28} icon={<UserOutlined />} className="!bg-blue-400" />,
-      },
-      system: {
-        variant: 'borderless' as const,
-        contentRender: (content: unknown) => (
-          <XMarkdown
-            content={toMarkdownContent(content)}
-            className="text-blue-900"
-            openLinksInNewTab
-          />
-        ),
       },
     }),
     [],
@@ -262,48 +231,24 @@ function AgentPageClient() {
           images: [],
         },
         {
-          onEvent: (event: AgentStreamEvent) => {
-            if (event.type === 'content') {
-              assistantContent += event.content
-              setBubbleItems((prev) => {
-                return prev.map((item) => {
-                  if (item.key !== assistantKey)
-                    return item
+          onEvent: (event) => {
+            if (!event.content)
+              return
 
-                  return {
-                    ...item,
-                    content: assistantContent,
-                    loading: false,
-                    streaming: true,
-                  }
-                })
+            assistantContent += event.content
+            setBubbleItems((prev) => {
+              return prev.map((item) => {
+                if (item.key !== assistantKey)
+                  return item
+
+                return {
+                  ...item,
+                  content: assistantContent,
+                  loading: false,
+                  streaming: true,
+                }
               })
-              return
-            }
-
-            if (event.type === 'tool_call') {
-              const toolName = toDisplayText(event.data.name, '工具')
-              const argumentsText = event.data.arguments.trim()
-              const content = argumentsText
-                ? `正在调用工具：${toolName}\n参数：${argumentsText}`
-                : `正在调用工具：${toolName}`
-              setBubbleItems(prev => [...prev, createSystemBubbleItem(content)])
-              return
-            }
-
-            const toolName = toDisplayText(
-              event.data.tool_name || event.data.tool_call_id,
-              '工具',
-            )
-            const resultText = toToolResultSummary(event.data.result)
-            setBubbleItems(prev => [
-              ...prev,
-              createSystemBubbleItem(
-                resultText
-                  ? `${toolName} 返回：${resultText}`
-                  : `${toolName} 已返回结果`,
-              ),
-            ])
+            })
           },
         },
         abortController.signal,

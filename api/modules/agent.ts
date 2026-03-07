@@ -42,27 +42,11 @@ export interface AgentStreamPayload {
   images?: string[]
 }
 
-export interface AgentToolCallEventData {
-  id: string
-  name: string
-  arguments: string
-}
-
-export interface AgentToolResultEventData {
-  tool_call_id: string
-  tool_name: string
-  result: string
-}
-
-export type AgentStreamEvent = {
-  type: 'content'
+export interface AgentStreamEvent {
+  event_id: string
+  seq: number
+  ts: number
   content: string
-} | {
-  type: 'tool_call'
-  data: AgentToolCallEventData
-} | {
-  type: 'tool_result'
-  data: AgentToolResultEventData
 }
 
 interface AgentStreamCallbacks {
@@ -79,6 +63,20 @@ function toText(value: unknown) {
     return ''
 
   return value.trim()
+}
+
+function toNumber(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value))
+    return value
+
+  if (typeof value !== 'string')
+    return undefined
+
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed))
+    return undefined
+
+  return parsed
 }
 
 function toTextArray(value: unknown) {
@@ -136,43 +134,51 @@ function toAgentStreamEvent(raw: string): AgentStreamEvent | null {
     if (!isObject(parsed))
       return null
 
-    const type = toText(parsed.type)
-    if (type === 'content') {
-      return {
-        type: 'content',
-        content: typeof parsed.content === 'string' ? parsed.content : '',
-      }
-    }
+    // 兼容旧格式：仅消费 type=content；新格式不再返回 type 字段
+    const legacyType = toText(parsed.type)
+    if (legacyType && legacyType !== 'content')
+      return null
 
-    if (type === 'tool_call') {
-      const data = isObject(parsed.data) ? parsed.data : {}
-      return {
-        type: 'tool_call',
-        data: {
-          id: toText(data.id),
-          name: toText(data.name),
-          arguments: toText(data.arguments),
-        },
-      }
-    }
-
-    if (type === 'tool_result') {
-      const data = isObject(parsed.data) ? parsed.data : {}
-      return {
-        type: 'tool_result',
-        data: {
-          tool_call_id: toText(data.tool_call_id),
-          tool_name: toText(data.tool_name),
-          result: toText(data.result),
-        },
-      }
+    return {
+      event_id: toText(parsed.event_id),
+      seq: toNumber(parsed.seq) || 0,
+      ts: toNumber(parsed.ts) || Date.now(),
+      content: typeof parsed.content === 'string' ? parsed.content : '',
     }
   }
   catch {
     return null
   }
+}
 
-  return null
+function extractSSEData(frame: string) {
+  const dataLines = frame
+    .split(/\r?\n/)
+    .filter(line => line.startsWith('data:'))
+    .map(line => line.slice(5).trimStart())
+    .filter(Boolean)
+
+  if (!dataLines.length)
+    return ''
+
+  return dataLines.join('\n')
+}
+
+function handleSSEFrame(frame: string, callbacks: AgentStreamCallbacks) {
+  const data = extractSSEData(frame)
+  if (!data)
+    return false
+
+  if (data === '[DONE]') {
+    callbacks.onDone?.()
+    return true
+  }
+
+  const event = toAgentStreamEvent(data)
+  if (event)
+    callbacks.onEvent(event)
+
+  return false
 }
 
 async function resolveStreamError(response: Response) {
@@ -284,39 +290,22 @@ export async function streamAgentMessage(
       break
 
     buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split(/\r?\n/)
-    buffer = lines.pop() || ''
+    const frames = buffer.split(/\r?\n\r?\n/)
+    buffer = frames.pop() || ''
 
-    for (const line of lines) {
-      if (!line.startsWith('data:'))
-        continue
-
-      const data = line.slice(5).trimStart()
-      if (!data)
-        continue
-
-      if (data === '[DONE]') {
-        callbacks.onDone?.()
+    for (const frame of frames) {
+      if (handleSSEFrame(frame, callbacks))
         return
-      }
-
-      const event = toAgentStreamEvent(data)
-      if (event)
-        callbacks.onEvent(event)
     }
   }
 
-  const tail = `${buffer}${decoder.decode()}`.trim()
-  if (tail.startsWith('data:')) {
-    const data = tail.slice(5).trimStart()
-    if (data === '[DONE]') {
-      callbacks.onDone?.()
-      return
+  const tail = `${buffer}${decoder.decode()}`
+  if (tail.trim()) {
+    const frames = tail.split(/\r?\n\r?\n/)
+    for (const frame of frames) {
+      if (handleSSEFrame(frame, callbacks))
+        return
     }
-
-    const event = toAgentStreamEvent(data)
-    if (event)
-      callbacks.onEvent(event)
   }
 
   callbacks.onDone?.()

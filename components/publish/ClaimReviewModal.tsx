@@ -81,13 +81,13 @@ function ClaimReviewModal({ open, postId, postName, onClose }: ClaimReviewModalP
   const claimListQuery = useClaimListQuery(postId, open && !!postId)
   const reviewClaimMutation = useReviewClaimMutation()
 
-  const handleReview = async (claimId: number, action: 1 | 2) => {
+  const handleReview = async (claimId: number, approve: boolean) => {
     try {
       await reviewClaimMutation.mutateAsync({
         claim_id: claimId,
-        action,
+        approve,
       })
-      message.success(action === 1 ? '已同意该认领申请' : '已拒绝该认领申请')
+      message.success(approve ? '已同意该认领申请' : '已拒绝该认领申请')
       await claimListQuery.refetch()
     }
     catch (error) {
@@ -169,7 +169,7 @@ function ClaimReviewModal({ open, postId, postName, onClose }: ClaimReviewModalP
                             size="small"
                             loading={reviewClaimMutation.isPending}
                             onClick={() => {
-                              void handleReview(item.id, 2)
+                              void handleReview(item.id, false)
                             }}
                           >
                             拒绝
@@ -179,7 +179,7 @@ function ClaimReviewModal({ open, postId, postName, onClose }: ClaimReviewModalP
                             size="small"
                             loading={reviewClaimMutation.isPending}
                             onClick={() => {
-                              void handleReview(item.id, 1)
+                              void handleReview(item.id, true)
                             }}
                           >
                             同意

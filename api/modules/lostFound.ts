@@ -200,7 +200,7 @@ export interface MyClaimListData {
 
 export interface ReviewClaimPayload {
   claim_id: number
-  action: 1 | 2
+  approve: boolean
 }
 
 interface PostActionResult {

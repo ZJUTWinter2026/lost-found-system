@@ -1,7 +1,7 @@
 'use client'
 
 import type { LostFoundListParams } from '@/api/modules/lostFound'
-import type { CampusCode, ItemPostType, ItemStatus, QueryFilters, TimeRangeValue } from '@/components/query/types'
+import type { CampusCode, ItemPostType, QueryFilters, TimeRangeValue } from '@/components/query/types'
 import { Button, Card, Flex, Typography } from 'antd'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMemo, useRef, useState } from 'react'
@@ -9,7 +9,6 @@ import { mapPostListItemToLostFoundItem } from '@/api/modules/lostFound'
 import {
   CAMPUS_OPTIONS,
   PUBLISH_TYPE_OPTIONS,
-  STATUS_OPTIONS,
   TIME_RANGE_HOUR_MAP,
   TIME_RANGE_OPTIONS,
 } from '@/components/query/constants'
@@ -33,9 +32,6 @@ const VALID_POST_TYPE = new Set<ItemPostType>(
 )
 const VALID_CAMPUS = new Set<CampusCode>(
   CAMPUS_OPTIONS.map(option => option.value),
-)
-const VALID_STATUS = new Set<ItemStatus>(
-  STATUS_OPTIONS.map(option => option.value),
 )
 
 function toPostPublishType(postType: ItemPostType) {
@@ -69,7 +65,6 @@ function parseInitialState(searchParams: URLSearchParams): QueryPageState {
   const campusValue = searchParams.get('campus')
   const location = searchParams.get('location')?.trim()
   const timeRangeValue = searchParams.get('timeRange')
-  const statusValue = searchParams.get('status')
 
   return {
     filters: {
@@ -86,10 +81,6 @@ function parseInitialState(searchParams: URLSearchParams): QueryPageState {
       timeRange:
         timeRangeValue && VALID_TIME_RANGE.has(timeRangeValue as TimeRangeValue)
           ? (timeRangeValue as TimeRangeValue)
-          : undefined,
-      status:
-        statusValue && VALID_STATUS.has(statusValue as ItemStatus)
-          ? (statusValue as ItemStatus)
           : undefined,
     },
     hasViewed: searchParams.get('viewed') !== '0',
@@ -109,8 +100,6 @@ function buildSearchText(filters: QueryFilters, hasViewed: boolean) {
     params.set('location', filters.location)
   if (filters.timeRange)
     params.set('timeRange', filters.timeRange)
-  if (filters.status)
-    params.set('status', filters.status)
   if (hasViewed)
     params.set('viewed', '1')
 
@@ -131,18 +120,12 @@ function QueryPageClient() {
     [filters],
   )
   const listQuery = useLostFoundListQuery(listParams, hasViewed)
-  const filteredItems = useMemo(
-    () => {
-      const mappedItems = (listQuery.data?.list || [])
+  const sortedItems = useMemo(
+    () =>
+      (listQuery.data?.list || [])
         .map(mapPostListItemToLostFoundItem)
-        .sort((left, right) => toTimestamp(right.occurredAt) - toTimestamp(left.occurredAt))
-
-      if (!filters.status)
-        return mappedItems
-
-      return mappedItems.filter(item => item.status === filters.status)
-    },
-    [filters.status, listQuery.data?.list],
+        .sort((left, right) => toTimestamp(right.occurredAt) - toTimestamp(left.occurredAt)),
+    [listQuery.data?.list],
   )
 
   const syncSearch = (nextFilters: QueryFilters, nextHasViewed: boolean) => {
@@ -198,8 +181,8 @@ function QueryPageClient() {
 
           {!listQuery.isError && (
             <ItemList
-              items={filteredItems}
-              total={filters.status ? filteredItems.length : listQuery.data?.total}
+              items={sortedItems}
+              total={listQuery.data?.total}
               loading={listQuery.isFetching}
               onSelectItem={handleSelectItem}
             />

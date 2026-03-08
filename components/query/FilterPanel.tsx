@@ -9,7 +9,6 @@ import {
   ITEM_TYPE_OPTIONS,
   ITEM_TYPE_OTHER_VALUE,
   PUBLISH_TYPE_OPTIONS,
-  STATUS_OPTIONS,
   TIME_RANGE_OPTIONS,
 } from './constants'
 
@@ -173,16 +172,6 @@ function FilterPanel({
               />
             </Flex>
 
-            <Flex vertical gap={6} className="w-full sm:w-[calc(50%-4px)] lg:w-[calc(33.333%-6px)]">
-              <FilterLabel text="物品状态" />
-              <Select
-                value={filters.status}
-                allowClear
-                placeholder="请选择"
-                options={STATUS_OPTIONS}
-                onChange={value => patchFilters({ status: value })}
-              />
-            </Flex>
           </Flex>
 
           <Flex justify="end">

@@ -24,7 +24,6 @@ export interface QueryFilters {
   campus?: CampusCode
   location?: string
   timeRange?: TimeRangeValue
-  status?: ItemStatus
 }
 
 export interface LostFoundItem {

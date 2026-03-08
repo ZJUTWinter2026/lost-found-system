@@ -2,7 +2,6 @@ import type {
   CampusCode,
   FeedbackRecord,
   ItemPostType,
-  ItemStatus,
   LostFoundItem,
   TimeRangeValue,
 } from './types'
@@ -54,18 +53,6 @@ export const TIME_RANGE_OPTIONS: Array<{ label: string, value: TimeRangeValue }>
   { label: '近3天', value: '3d' },
   { label: '近7天', value: '7d' },
   { label: '近30天', value: '30d' },
-]
-
-export const STATUS_OPTIONS: Array<{ label: ItemStatus, value: ItemStatus }> = [
-  { label: '待审核', value: '待审核' },
-  { label: '已通过', value: '已通过' },
-  { label: '寻找中', value: '寻找中' },
-  { label: '待认领', value: '待认领' },
-  { label: '已找回', value: '已找回' },
-  { label: '已归还', value: '已归还' },
-  { label: '已取消', value: '已取消' },
-  { label: '被驳回', value: '被驳回' },
-  { label: '已归档', value: '已归档' },
 ]
 
 export const TIME_RANGE_HOUR_MAP: Record<TimeRangeValue, number> = {

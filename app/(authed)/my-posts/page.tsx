@@ -87,7 +87,7 @@ interface RecordEditorModalProps {
   onSubmit: (payload: PublishEditablePayload) => Promise<void> | void
 }
 
-const STATUS_ORDER: PublishReviewStatus[] = ['待审核', '已通过', '已匹配', '已认领', '已驳回', '已取消']
+const STATUS_ORDER: PublishReviewStatus[] = ['待审核', '已通过', '已匹配', '已认领', '已驳回', '已取消', '已归档']
 
 const STATUS_TAG_COLOR: Record<PublishReviewStatus, string> = {
   待审核: 'gold',
@@ -96,6 +96,7 @@ const STATUS_TAG_COLOR: Record<PublishReviewStatus, string> = {
   已认领: 'green',
   已驳回: 'red',
   已取消: 'default',
+  已归档: 'default',
 }
 
 const DEFAULT_ITEM_TYPE_AUTOCOMPLETE_OPTIONS = ITEM_TYPE_OPTIONS.map(option => ({
@@ -396,93 +397,95 @@ function StatusSection({
 
       <List
         dataSource={records}
-        renderItem={record => (
-          <List.Item className="!px-0 !py-2">
-            <Flex
-              vertical
-              gap={10}
-              className="w-full rounded-lg border border-blue-100 bg-blue-50"
-              style={{ padding: 16 }}
-            >
-              <Flex align="center" justify="space-between" wrap gap={8}>
-                <Space size={8} wrap>
-                  <Text className="text-sm font-semibold text-blue-900">{record.itemName}</Text>
-                  <Tag color={STATUS_TAG_COLOR[record.reviewStatus]} className="!mr-0">
-                    {record.reviewStatus}
-                  </Tag>
-                </Space>
-                <Text className="text-xs text-blue-900/60">{`发布时间：${formatDateTime(record.createdAt)}`}</Text>
-              </Flex>
+        renderItem={(record) => {
+          const rewardText = (record.rewardRemark || '').trim() || '无'
 
-              <Text className="block text-sm text-blue-900/80">{`类型：${record.itemType}`}</Text>
-              <Text className="block text-sm text-blue-900/80">{`地点：${record.location}`}</Text>
-              <Text className="block text-sm text-blue-900/80">{`发生时间：${formatDateTime(record.occurredAt)}`}</Text>
-              {record.hasReward && record.rewardRemark && (
-                <Text className="block text-sm text-amber-700">{`悬赏说明：${record.rewardRemark}`}</Text>
-              )}
-              {!!record.updatedAt && (
-                <Text className="block text-xs text-blue-900/60">{`最近更新：${formatDateTime(record.updatedAt)}`}</Text>
-              )}
-              {record.reviewStatus === '已驳回' && record.rejectReason && (
-                <Text className="block text-sm text-red-600">{`驳回原因：${record.rejectReason}`}</Text>
-              )}
-
-              {(record.reviewStatus === '待审核' || record.reviewStatus === '已通过') && (
-                <Flex justify="end" gap={8} wrap className="pt-1">
-                  {record.reviewStatus === '待审核' && (
-                    <>
-                      <Button
-                        size="small"
-                        icon={<EditOutlined />}
-                        className="rounded-lg"
-                        onClick={() => onEdit(record)}
-                      >
-                        修改
-                      </Button>
-                      <Button
-                        danger
-                        size="small"
-                        icon={<DeleteOutlined />}
-                        className="rounded-lg"
-                        onClick={() => onDelete(record)}
-                      >
-                        删除
-                      </Button>
-                    </>
-                  )}
-                  {record.reviewStatus === '已通过' && (
-                    <>
-                      <Button
-                        size="small"
-                        className="rounded-lg"
-                        onClick={() => onReviewClaim(record)}
-                      >
-                        认领申请
-                      </Button>
-                      <Button
-                        size="small"
-                        icon={<FileTextOutlined />}
-                        className="rounded-lg"
-                        onClick={() => onSupplement(record)}
-                      >
-                        补充说明
-                      </Button>
-                      <Button
-                        danger
-                        size="small"
-                        icon={<StopOutlined />}
-                        className="rounded-lg"
-                        onClick={() => onCancelPublish(record)}
-                      >
-                        取消发布
-                      </Button>
-                    </>
-                  )}
+          return (
+            <List.Item className="!px-0 !py-2">
+              <Flex
+                vertical
+                gap={10}
+                className="w-full rounded-lg border border-blue-100 bg-blue-50"
+                style={{ padding: 16 }}
+              >
+                <Flex align="center" justify="space-between" wrap gap={8}>
+                  <Space size={8} wrap>
+                    <Text className="text-sm font-semibold text-blue-900">{record.itemName}</Text>
+                    <Tag color={STATUS_TAG_COLOR[record.reviewStatus]} className="!mr-0">
+                      {record.reviewStatus}
+                    </Tag>
+                  </Space>
+                  <Text className="text-xs text-blue-900/60">{`发布时间：${formatDateTime(record.createdAt)}`}</Text>
                 </Flex>
-              )}
-            </Flex>
-          </List.Item>
-        )}
+
+                <Text className="block text-sm text-blue-900/80">{`类型：${record.itemType}`}</Text>
+                <Text className="block text-sm text-blue-900/80">{`地点：${record.location}`}</Text>
+                <Text className="block text-sm text-blue-900/80">{`发生时间：${formatDateTime(record.occurredAt)}`}</Text>
+                <Text className="block text-sm text-blue-900/80">{`悬赏：${rewardText}`}</Text>
+                {!!record.updatedAt && (
+                  <Text className="block text-xs text-blue-900/60">{`最近更新：${formatDateTime(record.updatedAt)}`}</Text>
+                )}
+                {record.reviewStatus === '已驳回' && record.rejectReason && (
+                  <Text className="block text-sm text-red-600">{`驳回原因：${record.rejectReason}`}</Text>
+                )}
+
+                {(record.reviewStatus === '待审核' || record.reviewStatus === '已通过') && (
+                  <Flex justify="end" gap={8} wrap className="pt-1">
+                    {record.reviewStatus === '待审核' && (
+                      <>
+                        <Button
+                          size="small"
+                          icon={<EditOutlined />}
+                          className="rounded-lg"
+                          onClick={() => onEdit(record)}
+                        >
+                          修改
+                        </Button>
+                        <Button
+                          danger
+                          size="small"
+                          icon={<DeleteOutlined />}
+                          className="rounded-lg"
+                          onClick={() => onDelete(record)}
+                        >
+                          删除
+                        </Button>
+                      </>
+                    )}
+                    {record.reviewStatus === '已通过' && (
+                      <>
+                        <Button
+                          size="small"
+                          className="rounded-lg"
+                          onClick={() => onReviewClaim(record)}
+                        >
+                          认领申请
+                        </Button>
+                        <Button
+                          size="small"
+                          icon={<FileTextOutlined />}
+                          className="rounded-lg"
+                          onClick={() => onSupplement(record)}
+                        >
+                          补充说明
+                        </Button>
+                        <Button
+                          danger
+                          size="small"
+                          icon={<StopOutlined />}
+                          className="rounded-lg"
+                          onClick={() => onCancelPublish(record)}
+                        >
+                          取消发布
+                        </Button>
+                      </>
+                    )}
+                  </Flex>
+                )}
+              </Flex>
+            </List.Item>
+          )
+        }}
       />
     </Card>
   )

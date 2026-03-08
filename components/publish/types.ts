@@ -47,7 +47,7 @@ export interface SubmitPublishPayload {
   photos: string[]
 }
 
-export type PublishReviewStatus = '待审核' | '已通过' | '已匹配' | '已认领' | '已驳回' | '已取消'
+export type PublishReviewStatus = '待审核' | '已通过' | '已匹配' | '已认领' | '已驳回' | '已取消' | '已归档'
 
 export interface PublishEditablePayload {
   itemType: string

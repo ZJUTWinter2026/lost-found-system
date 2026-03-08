@@ -1,6 +1,7 @@
 import type { PublishRecord, PublishReviewStatus } from '@/components/publish/types'
-import type { ItemPostType, ItemStatus, LostFoundItem, SubmitClaimPayload } from '@/components/query/types'
+import type { ItemPostType, LostFoundItem, SubmitClaimPayload } from '@/components/query/types'
 import { request } from '@/api/request'
+import { mapLostFoundStatusToItemStatus, normalizeLostFoundStatus } from '@/utils/lostFoundStatus'
 
 export type PostPublishType = 'LOST' | 'FOUND'
 export type PostCampus = 'ZHAO_HUI' | 'PING_FENG' | 'MO_GAN_SHAN'
@@ -83,6 +84,7 @@ export interface MyPostListItem {
   cancel_reason?: string
   created_at: string
   event_time: string
+  has_reward?: boolean
   id: number
   item_name: string
   item_type: string
@@ -90,6 +92,7 @@ export interface MyPostListItem {
   location: string
   publish_type: string
   reject_reason?: string
+  reward_description?: string
   status: string
   status_text?: string
 }
@@ -260,76 +263,18 @@ function resolvePostType(value: string): ItemPostType {
   return '失物'
 }
 
-function resolveLostFoundItemStatus(value: string, publishTypeValue?: string): ItemStatus {
-  const normalized = toText(value)
-  const upper = normalized.toUpperCase()
-  const postType = resolvePostType(toText(publishTypeValue || ''))
-
-  if (normalized === '0' || normalized === '待审核' || upper === 'PENDING')
-    return '待审核'
-
-  if (normalized === '1' || normalized === '已通过' || upper === 'APPROVED')
-    return postType === '招领' ? '待认领' : '寻找中'
-
-  if (
-    normalized === '3'
-    || normalized === '已认领'
-    || normalized === '已归还'
-    || normalized === '已找回'
-    || normalized === '已解决'
-    || upper === 'CLAIMED'
-    || upper === 'SOLVED'
-  ) {
-    return postType === '失物' ? '已找回' : '已归还'
-  }
-
-  if (normalized === '已归档' || upper === 'ARCHIVED')
-    return '已归档'
-
-  if (
-    normalized === '4'
-    || normalized === '已取消'
-    || upper === 'CANCELLED'
-    || upper === 'CANCELED'
-  ) {
-    return '已取消'
-  }
-
-  if (
-    normalized === '5'
-    || normalized === '被驳回'
-    || normalized === '已驳回'
-    || upper === 'REJECTED'
-  ) {
-    return '被驳回'
-  }
-
-  if (normalized === '待认领')
-    return '待认领'
-  if (normalized === '寻找中')
-    return '寻找中'
-
-  return postType === '招领' ? '待认领' : '寻找中'
-}
-
 function resolveReviewStatus(value: string, statusText?: string): PublishReviewStatus {
   const normalizedText = toText(statusText)
-  if (
-    normalizedText === '待审核'
-    || normalizedText === '已通过'
-    || normalizedText === '已匹配'
-    || normalizedText === '已认领'
-    || normalizedText === '已解决'
-    || normalizedText === '已驳回'
-    || normalizedText === '已取消'
-  ) {
-    if (normalizedText === '已解决')
-      return '已认领'
-
+  if (normalizedText === '待审核' || normalizedText === '已通过' || normalizedText === '已匹配')
     return normalizedText
-  }
-  if (normalizedText === '已归档')
+  if (normalizedText === '已认领' || normalizedText === '已解决')
     return '已认领'
+  if (normalizedText === '已驳回')
+    return '已驳回'
+  if (normalizedText === '已取消')
+    return '已取消'
+  if (normalizedText === '已归档')
+    return '已归档'
 
   const normalized = toText(value).toUpperCase()
   if (normalized === '0' || normalized === 'PENDING')
@@ -338,27 +283,17 @@ function resolveReviewStatus(value: string, statusText?: string): PublishReviewS
     return '已通过'
   if (normalized === '2' || normalized === 'MATCHED')
     return '已匹配'
-  if (
-    normalized === '3'
-    || normalized === 'CLAIMED'
-    || normalized === 'SOLVED'
-    || normalized === 'ARCHIVED'
-  ) {
+  const mappedStatus = normalizeLostFoundStatus(value)
+  if (mappedStatus === 'SOLVED')
     return '已认领'
-  }
-  if (normalized === '4' || normalized === 'CANCELED' || normalized === 'CANCELLED')
+  if (mappedStatus === 'CANCELLED')
     return '已取消'
-  if (normalized === '5' || normalized === 'REJECTED')
+  if (mappedStatus === 'REJECTED')
     return '已驳回'
+  if (mappedStatus === 'ARCHIVED')
+    return '已归档'
 
   return '待审核'
-}
-
-function resolveMyPostItemStatus(postType: ItemPostType, reviewStatus: PublishReviewStatus): ItemStatus {
-  if (reviewStatus === '已认领')
-    return '已归还'
-
-  return postType === '招领' ? '待认领' : '寻找中'
 }
 
 export function mapPostListItemToLostFoundItem(item: LostFoundListItem): LostFoundItem {
@@ -370,7 +305,7 @@ export function mapPostListItemToLostFoundItem(item: LostFoundListItem): LostFou
     itemType: toText(item.item_type_other) || item.item_type,
     location: item.location,
     occurredAt: item.event_time,
-    status: resolveLostFoundItemStatus(item.status, item.publish_type),
+    status: mapLostFoundStatusToItemStatus(item.status, { publishType: item.publish_type }),
     postType,
     description: item.features,
     features: item.features,
@@ -394,7 +329,7 @@ export function mapPostDetailToLostFoundItem(item: LostFoundDetailData): LostFou
     itemType: toText(item.item_type_other) || item.item_type,
     location: item.location,
     occurredAt: item.event_time,
-    status: resolveLostFoundItemStatus(item.status, item.publish_type),
+    status: mapLostFoundStatusToItemStatus(item.status, { publishType: item.publish_type }),
     postType,
     description: item.features,
     features: item.features,
@@ -419,7 +354,7 @@ export function mapPostDetailToPublishRecord(item: LostFoundDetailData): Publish
     itemType: toText(item.item_type_other) || item.item_type,
     location: item.location,
     timeRange: '7d',
-    status: resolveMyPostItemStatus(postType, reviewStatus),
+    status: mapLostFoundStatusToItemStatus(item.status, { publishType: item.publish_type }),
     itemName: item.item_name,
     occurredAt: item.event_time,
     features: item.features,
@@ -445,13 +380,17 @@ export function mapMyPostListItemToPublishRecord(item: MyPostListItem): PublishR
     itemType: toText(item.item_type_other) || item.item_type,
     location: item.location,
     timeRange: '7d',
-    status: resolveMyPostItemStatus(postType, reviewStatus),
+    status: mapLostFoundStatusToItemStatus(item.status, {
+      publishType: item.publish_type,
+      statusText: item.status_text,
+    }),
     itemName: item.item_name,
     occurredAt: item.event_time,
     features: '',
     contactName: '',
     contactPhone: '',
-    hasReward: false,
+    hasReward: !!item.has_reward,
+    rewardRemark: toText(item.reward_description) || undefined,
     photos: [],
     createdAt: item.created_at,
     reviewStatus,

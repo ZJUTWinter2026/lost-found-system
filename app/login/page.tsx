@@ -30,7 +30,7 @@ function validateUsername(_: RuleObject, value: string) {
 
 function LoginPage() {
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const disabledTipShownRef = useRef(false)
+  const reasonTipShownRef = useRef(false)
   const formItemStyle = { marginBottom: 12 }
   const [form] = Form.useForm<LoginFormValues>()
   const router = useRouter()
@@ -64,14 +64,22 @@ function LoginPage() {
   }, [])
 
   useEffect(() => {
-    if (disabledTipShownRef.current)
-      return
-    const searchParams = new URLSearchParams(window.location.search)
-    if (searchParams.get('reason') !== 'disabled')
+    if (reasonTipShownRef.current)
       return
 
-    disabledTipShownRef.current = true
-    message.warning('账号已被禁用，请联系管理员处理')
+    const searchParams = new URLSearchParams(window.location.search)
+    const reason = searchParams.get('reason')
+
+    if (reason === 'disabled') {
+      reasonTipShownRef.current = true
+      message.warning('账号已被禁用，请联系管理员处理')
+      return
+    }
+
+    if (reason === 'unauthorized') {
+      reasonTipShownRef.current = true
+      message.warning('用户未登录，请重新登录')
+    }
   }, [])
 
   const handleLogin = (values: LoginFormValues) => {

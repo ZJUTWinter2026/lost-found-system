@@ -4,6 +4,7 @@ import { AxiosError } from 'axios'
 import { handleAccountDisabled, isAccountDisabledCode } from '@/api/accountDisabled'
 import { apiClient } from '@/api/client'
 import { ApiRequestError } from '@/api/types'
+import { handleUnauthorized, isUnauthorizedCode } from '@/api/unauthorized'
 
 interface ResponseMessagePayload {
   message?: string
@@ -50,6 +51,8 @@ export async function request<T>(config: AxiosRequestConfig): Promise<T> {
     if (typeof code === 'number' && code !== 0) {
       if (isAccountDisabledCode(code))
         handleAccountDisabled()
+      if (isUnauthorizedCode(code))
+        handleUnauthorized()
       throw new ApiRequestError(message || '请求失败', { code, status: response.status })
     }
 
@@ -63,6 +66,8 @@ export async function request<T>(config: AxiosRequestConfig): Promise<T> {
       const errorCode = resolveErrorCode(error.response?.data)
       if (isAccountDisabledCode(errorCode))
         handleAccountDisabled()
+      if (isUnauthorizedCode(errorCode))
+        handleUnauthorized()
 
       throw new ApiRequestError(
         resolveErrorMessage(error.response?.data, error.message || '网络请求失败'),

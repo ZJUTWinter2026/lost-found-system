@@ -269,7 +269,7 @@ function resolveLostFoundItemStatus(value: string, publishTypeValue?: string): I
     return '待审核'
 
   if (normalized === '1' || normalized === '已通过' || upper === 'APPROVED')
-    return '已通过'
+    return postType === '招领' ? '待认领' : '寻找中'
 
   if (
     normalized === '3'

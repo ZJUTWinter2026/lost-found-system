@@ -9,11 +9,29 @@ export interface LoginResult {
   id: number
   need_update: boolean
   user_type: string
+  name?: string
+  campus?: string
 }
 
 export interface UpdatePasswordPayload {
   old_password: string
   new_password: string
+}
+
+export interface ForgotPasswordPayload {
+  username: string
+  id_card: string
+}
+
+interface ForgotPasswordResult {
+  success: boolean
+}
+
+function toText(value: unknown) {
+  if (typeof value !== 'string')
+    return ''
+
+  return value.trim()
 }
 
 export function loginByPassword(payload: LoginPayload) {
@@ -53,5 +71,16 @@ export function updatePassword(payload: UpdatePasswordPayload) {
     url: '/user/update',
     method: 'POST',
     data: payload,
+  })
+}
+
+export function forgotPassword(payload: ForgotPasswordPayload) {
+  return request<ForgotPasswordResult>({
+    url: '/user/forgot-password',
+    method: 'POST',
+    data: {
+      username: toText(payload.username),
+      id_card: toText(payload.id_card).toUpperCase(),
+    },
   })
 }

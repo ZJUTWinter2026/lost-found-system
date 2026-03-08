@@ -623,6 +623,7 @@ function MyPostsPage() {
     const isPresetType = presetItemTypeValues.includes(normalizedItemType)
     const item_type = isPresetType ? normalizedItemType : '其它'
     const item_type_other = isPresetType ? '' : normalizedItemType
+    const storageLocation = (editorState.detail.storage_location || '').trim() || payload.location.trim()
 
     const updatePayload: UpdateMyPostPayload = {
       post_id: Number(editorState.record.id),
@@ -631,7 +632,7 @@ function MyPostsPage() {
       item_type_other,
       campus: resolveCampus(editorState.detail.campus) as PostCampus,
       location: payload.location.trim(),
-      storage_location: editorState.detail.storage_location.trim() || payload.location.trim(),
+      ...(editorState.record.postType === '招领' ? { storage_location: storageLocation } : {}),
       event_time: toIsoDateText(payload.occurredAt),
       features: payload.features.trim(),
       contact_name: payload.contactName.trim(),

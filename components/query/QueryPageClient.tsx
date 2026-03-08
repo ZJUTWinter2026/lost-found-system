@@ -1,6 +1,6 @@
 'use client'
 
-import type { LostFoundListParams, PostStatus } from '@/api/modules/lostFound'
+import type { LostFoundListParams } from '@/api/modules/lostFound'
 import type { CampusCode, ItemPostType, ItemStatus, QueryFilters, TimeRangeValue } from '@/components/query/types'
 import { Button, Card, Flex, Typography } from 'antd'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -38,12 +38,6 @@ const VALID_STATUS = new Set<ItemStatus>(
   STATUS_OPTIONS.map(option => option.value),
 )
 
-const STATUS_TO_BACKEND_MAP: Record<ItemStatus, PostStatus> = {
-  寻找中: 'APPROVED',
-  待认领: 'APPROVED',
-  已归还: 'SOLVED',
-}
-
 function toPostPublishType(postType: ItemPostType) {
   return postType === '招领' ? 'FOUND' : 'LOST'
 }
@@ -54,7 +48,6 @@ function buildListParams(filters: QueryFilters): LostFoundListParams {
     item_type: filters.itemType?.trim() || undefined,
     campus: filters.campus,
     location: filters.location?.trim() || undefined,
-    status: filters.status ? STATUS_TO_BACKEND_MAP[filters.status] : undefined,
     page: 1,
     page_size: 10,
   }
@@ -139,11 +132,17 @@ function QueryPageClient() {
   )
   const listQuery = useLostFoundListQuery(listParams, hasViewed)
   const filteredItems = useMemo(
-    () =>
-      (listQuery.data?.list || [])
+    () => {
+      const mappedItems = (listQuery.data?.list || [])
         .map(mapPostListItemToLostFoundItem)
-        .sort((left, right) => toTimestamp(right.occurredAt) - toTimestamp(left.occurredAt)),
-    [listQuery.data?.list],
+        .sort((left, right) => toTimestamp(right.occurredAt) - toTimestamp(left.occurredAt))
+
+      if (!filters.status)
+        return mappedItems
+
+      return mappedItems.filter(item => item.status === filters.status)
+    },
+    [filters.status, listQuery.data?.list],
   )
 
   const syncSearch = (nextFilters: QueryFilters, nextHasViewed: boolean) => {
@@ -200,7 +199,7 @@ function QueryPageClient() {
           {!listQuery.isError && (
             <ItemList
               items={filteredItems}
-              total={listQuery.data?.total}
+              total={filters.status ? filteredItems.length : listQuery.data?.total}
               loading={listQuery.isFetching}
               onSelectItem={handleSelectItem}
             />

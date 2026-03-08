@@ -6,6 +6,7 @@ import { Button, Card, Flex, Form, Input, message, Typography } from 'antd'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import ChangePasswordModal from '@/components/navigation/ChangePasswordModal'
+import ForgotPasswordModal from '@/components/navigation/ForgotPasswordModal'
 import { useLoginMutation } from '@/hooks/queries/useUserAuthMutations'
 import { persistLoginSession } from '@/utils/auth'
 
@@ -29,10 +30,13 @@ function validateUsername(_: RuleObject, value: string) {
 
 function LoginPage() {
   const rootRef = useRef<HTMLDivElement | null>(null)
+  const disabledTipShownRef = useRef(false)
   const formItemStyle = { marginBottom: 12 }
+  const [form] = Form.useForm<LoginFormValues>()
   const router = useRouter()
   const loginMutation = useLoginMutation()
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
   const [needUpdateAfterLogin, setNeedUpdateAfterLogin] = useState(false)
 
   useEffect(() => {
@@ -59,6 +63,17 @@ function LoginPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (disabledTipShownRef.current)
+      return
+    const searchParams = new URLSearchParams(window.location.search)
+    if (searchParams.get('reason') !== 'disabled')
+      return
+
+    disabledTipShownRef.current = true
+    message.warning('账号已被禁用，请联系管理员处理')
+  }, [])
+
   const handleLogin = (values: LoginFormValues) => {
     const username = values.username.trim()
     loginMutation.mutate(
@@ -76,7 +91,7 @@ function LoginPage() {
 
           if (result.need_update) {
             setNeedUpdateAfterLogin(true)
-            message.warning('登录成功，请点击下方“忘记密码”完成改密')
+            message.warning('登录成功，请点击下方“修改密码”完成改密')
             return
           }
 
@@ -137,6 +152,7 @@ function LoginPage() {
             </Flex>
 
             <Form
+              form={form}
               data-animate="rise"
               layout="vertical"
               requiredMark={false}
@@ -184,13 +200,20 @@ function LoginPage() {
                   登录
                 </Button>
               </Flex>
-              <Flex justify="end" className="pt-1">
+              <Flex justify="end" gap={12} className="pt-1">
+                <Button
+                  type="link"
+                  className="!px-0"
+                  onClick={() => setForgotPasswordOpen(true)}
+                >
+                  忘记密码
+                </Button>
                 <Button
                   type="link"
                   className="!px-0"
                   onClick={() => setPasswordModalOpen(true)}
                 >
-                  忘记密码
+                  修改密码
                 </Button>
               </Flex>
             </Form>
@@ -208,6 +231,12 @@ function LoginPage() {
             router.push('/query')
           }
         }}
+      />
+
+      <ForgotPasswordModal
+        open={forgotPasswordOpen}
+        initialUsername={form.getFieldValue('username')}
+        onClose={() => setForgotPasswordOpen(false)}
       />
     </div>
   )

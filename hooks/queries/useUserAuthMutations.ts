@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { loginByPassword, updatePassword, uploadImages } from '@/api/modules/user'
+import { forgotPassword, loginByPassword, updatePassword, uploadImages } from '@/api/modules/user'
 
 export function useLoginMutation() {
   return useMutation({
@@ -16,5 +16,11 @@ export function useUploadImagesMutation() {
 export function useUpdatePasswordMutation() {
   return useMutation({
     mutationFn: updatePassword,
+  })
+}
+
+export function useForgotPasswordMutation() {
+  return useMutation({
+    mutationFn: forgotPassword,
   })
 }

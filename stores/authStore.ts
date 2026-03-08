@@ -11,8 +11,10 @@ export interface AuthUser {
 
 interface AuthStore {
   authUser: AuthUser | null
+  shouldAutoOpenAnnouncement: boolean
   setLoginSession: (authUser: AuthUser) => void
   markPasswordUpdated: () => void
+  consumeAnnouncementAutoOpen: () => boolean
   clearLoginSession: () => void
 }
 
@@ -31,11 +33,13 @@ function resolvePersistStorage() {
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    set => ({
+    (set, get) => ({
       authUser: null,
+      shouldAutoOpenAnnouncement: false,
       setLoginSession: (authUser) => {
         set({
           authUser,
+          shouldAutoOpenAnnouncement: true,
         })
       },
       markPasswordUpdated: () => {
@@ -48,9 +52,19 @@ export const useAuthStore = create<AuthStore>()(
             : null,
         }))
       },
+      consumeAnnouncementAutoOpen: () => {
+        const shouldAutoOpenAnnouncement = get().shouldAutoOpenAnnouncement
+        if (shouldAutoOpenAnnouncement) {
+          set({
+            shouldAutoOpenAnnouncement: false,
+          })
+        }
+        return shouldAutoOpenAnnouncement
+      },
       clearLoginSession: () => {
         set({
           authUser: null,
+          shouldAutoOpenAnnouncement: false,
         })
       },
     }),

@@ -1,6 +1,7 @@
+import type { AgentHistoryParams } from '@/api/modules/agent'
 import type { AnnouncementListParams } from '@/api/modules/announcement'
 import type { FeedbackListParams } from '@/api/modules/feedback'
-import type { LostFoundListParams, MyPostListParams } from '@/api/modules/lostFound'
+import type { LostFoundListParams, MyClaimListParams, MyPostListParams } from '@/api/modules/lostFound'
 
 function removeEmptyFields<T extends object>(params: T): T {
   return Object.fromEntries(
@@ -16,6 +17,10 @@ const POST_ROOT_KEY = ['post'] as const
 const CLAIM_ROOT_KEY = ['claim'] as const
 const PUBLIC_ROOT_KEY = ['public'] as const
 const ANNOUNCEMENT_ROOT_KEY = ['announcement'] as const
+const AGENT_ROOT_KEY = ['agent'] as const
+interface AgentScopeParams {
+  user_id?: number
+}
 
 export const queryKeys = {
   lostFound: {
@@ -35,6 +40,9 @@ export const queryKeys = {
     all: CLAIM_ROOT_KEY,
     lists: () => [...CLAIM_ROOT_KEY, 'list'] as const,
     list: (postId: string) => [...CLAIM_ROOT_KEY, 'list', postId] as const,
+    myLists: () => [...CLAIM_ROOT_KEY, 'my-list'] as const,
+    myList: (params: MyClaimListParams = {}) =>
+      [...CLAIM_ROOT_KEY, 'my-list', removeEmptyFields(params)] as const,
   },
   public: {
     all: PUBLIC_ROOT_KEY,
@@ -45,6 +53,13 @@ export const queryKeys = {
     lists: () => [...ANNOUNCEMENT_ROOT_KEY, 'list'] as const,
     list: (params: AnnouncementListParams = {}) =>
       [...ANNOUNCEMENT_ROOT_KEY, 'list', removeEmptyFields(params)] as const,
+  },
+  agent: {
+    all: AGENT_ROOT_KEY,
+    sessions: (userId?: number) =>
+      [...AGENT_ROOT_KEY, 'sessions', removeEmptyFields({ user_id: userId } satisfies AgentScopeParams)] as const,
+    history: (params: AgentHistoryParams, userId?: number) =>
+      [...AGENT_ROOT_KEY, 'history', removeEmptyFields({ ...params, user_id: userId })] as const,
   },
   post: {
     all: POST_ROOT_KEY,

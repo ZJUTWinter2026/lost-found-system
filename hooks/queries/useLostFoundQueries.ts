@@ -1,9 +1,11 @@
-import type { LostFoundListParams } from '@/api/modules/lostFound'
+import type { LostFoundListParams, MyClaimListParams } from '@/api/modules/lostFound'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  cancelClaimRequest,
   getClaimList,
   getLostFoundItemDetail,
   getLostFoundList,
+  getMyClaimList,
   reviewClaim,
   submitClaimRequest,
 } from '@/api/modules/lostFound'
@@ -36,6 +38,7 @@ export function useSubmitClaimMutation() {
   return useMutation({
     mutationFn: submitClaimRequest,
     onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.claim.myLists() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.lostFound.lists() })
       void queryClient.invalidateQueries({
         queryKey: queryKeys.lostFound.detail(String(variables.postId)),
@@ -63,6 +66,28 @@ export function useClaimListQuery(postId?: string | number, enabled = true) {
       return getClaimList(queryPostId)
     },
     enabled: enabled && !!queryPostId,
+  })
+}
+
+export function useMyClaimListQuery(params: MyClaimListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.claim.myList(params),
+    queryFn: () => getMyClaimList(params),
+    enabled,
+  })
+}
+
+export function useCancelClaimMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: cancelClaimRequest,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.claim.all })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.lostFound.lists() })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.lostFound.details() })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.post.myLists() })
+    },
   })
 }
 

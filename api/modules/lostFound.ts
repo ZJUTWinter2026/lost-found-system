@@ -23,7 +23,6 @@ export interface LostFoundListParams {
   item_type?: string
   campus?: PostCampus
   location?: string
-  status?: PostStatus
   start_time?: string
   end_time?: string
   page?: number
@@ -59,7 +58,7 @@ export interface PublishPostPayload {
   item_type: string
   campus: PostCampus
   location: string
-  storage_location: string
+  storage_location?: string
   event_time: string
   features: string
   contact_name: string
@@ -124,7 +123,7 @@ export interface LostFoundDetailData {
   reject_reason: string
   reward_description: string
   status: string
-  storage_location: string
+  storage_location?: string
 }
 
 export interface UpdateMyPostPayload {
@@ -134,7 +133,7 @@ export interface UpdateMyPostPayload {
   item_type_other: string
   campus: PostCampus
   location: string
-  storage_location: string
+  storage_location?: string
   event_time: string
   features: string
   contact_name: string
@@ -176,6 +175,29 @@ interface ClaimListData {
   list: ClaimListItem[]
 }
 
+export interface MyClaimListParams {
+  page?: number
+  page_size?: number
+}
+
+export interface MyClaimListItem {
+  created_at: string
+  description: string
+  id: number
+  item_name: string
+  post_id: number
+  proof_images: string[]
+  publish_type: string
+  status: string
+}
+
+export interface MyClaimListData {
+  list: MyClaimListItem[]
+  page: number
+  page_size: number
+  total: number
+}
+
 export interface ReviewClaimPayload {
   claim_id: number
   action: 1 | 2
@@ -183,6 +205,10 @@ export interface ReviewClaimPayload {
 
 interface PostActionResult {
   success: boolean
+}
+
+export interface CancelClaimPayload {
+  id: number
 }
 
 function toText(value: unknown) {
@@ -239,24 +265,49 @@ function resolveLostFoundItemStatus(value: string, publishTypeValue?: string): I
   const upper = normalized.toUpperCase()
   const postType = resolvePostType(toText(publishTypeValue || ''))
 
+  if (normalized === '0' || normalized === '待审核' || upper === 'PENDING')
+    return '待审核'
+
+  if (normalized === '1' || normalized === '已通过' || upper === 'APPROVED')
+    return '已通过'
+
   if (
-    normalized === '已认领'
+    normalized === '3'
+    || normalized === '已认领'
     || normalized === '已归还'
+    || normalized === '已找回'
     || normalized === '已解决'
     || upper === 'CLAIMED'
     || upper === 'SOLVED'
-    || upper === 'ARCHIVED'
   ) {
-    return '已归还'
+    return postType === '失物' ? '已找回' : '已归还'
+  }
+
+  if (normalized === '已归档' || upper === 'ARCHIVED')
+    return '已归档'
+
+  if (
+    normalized === '4'
+    || normalized === '已取消'
+    || upper === 'CANCELLED'
+    || upper === 'CANCELED'
+  ) {
+    return '已取消'
   }
 
   if (
-    upper === 'CANCELLED'
-    || upper === 'CANCELED'
+    normalized === '5'
+    || normalized === '被驳回'
+    || normalized === '已驳回'
     || upper === 'REJECTED'
   ) {
-    return '已归还'
+    return '被驳回'
   }
+
+  if (normalized === '待认领')
+    return '待认领'
+  if (normalized === '寻找中')
+    return '寻找中'
 
   return postType === '招领' ? '待认领' : '寻找中'
 }
@@ -311,6 +362,8 @@ function resolveMyPostItemStatus(postType: ItemPostType, reviewStatus: PublishRe
 }
 
 export function mapPostListItemToLostFoundItem(item: LostFoundListItem): LostFoundItem {
+  const postType = resolvePostType(item.publish_type)
+
   return {
     id: String(item.id),
     name: item.item_name,
@@ -318,10 +371,10 @@ export function mapPostListItemToLostFoundItem(item: LostFoundListItem): LostFou
     location: item.location,
     occurredAt: item.event_time,
     status: resolveLostFoundItemStatus(item.status, item.publish_type),
-    postType: resolvePostType(item.publish_type),
+    postType,
     description: item.features,
     features: item.features,
-    storageLocation: item.location,
+    storageLocation: postType === '招领' ? item.location : '',
     claimCount: 0,
     contact: '',
     hasReward: item.has_reward,
@@ -333,6 +386,7 @@ export function mapPostListItemToLostFoundItem(item: LostFoundListItem): LostFou
 export function mapPostDetailToLostFoundItem(item: LostFoundDetailData): LostFoundItem {
   const contactName = toText(item.contact_name)
   const contactPhone = toText(item.contact_phone)
+  const postType = resolvePostType(item.publish_type)
 
   return {
     id: String(item.id),
@@ -341,10 +395,12 @@ export function mapPostDetailToLostFoundItem(item: LostFoundDetailData): LostFou
     location: item.location,
     occurredAt: item.event_time,
     status: resolveLostFoundItemStatus(item.status, item.publish_type),
-    postType: resolvePostType(item.publish_type),
+    postType,
     description: item.features,
     features: item.features,
-    storageLocation: toText(item.storage_location) || item.location,
+    storageLocation: postType === '招领'
+      ? (toText(item.storage_location) || item.location)
+      : '',
     claimCount: item.claim_count,
     contact: [contactName, contactPhone].filter(Boolean).join(' '),
     hasReward: item.has_reward,
@@ -415,7 +471,6 @@ export function getLostFoundList(params: LostFoundListParams = {}) {
       ...params,
       item_type: toLimitedText(params.item_type, 20),
       location: toLimitedText(params.location, 100),
-      status: params.status,
       page,
       page_size: pageSize,
     },
@@ -452,13 +507,15 @@ export function getMyPostList(params: MyPostListParams = {}) {
 }
 
 export function publishPost(payload: PublishPostPayload) {
+  const storageLocation = toLimitedText(payload.storage_location, 100)
+
   const normalizedPayload: PublishPostPayload = {
     publish_type: payload.publish_type,
     item_name: toLimitedRequiredText(payload.item_name, 50),
     item_type: toLimitedRequiredText(payload.item_type, 20),
     campus: payload.campus,
     location: toLimitedRequiredText(payload.location, 100),
-    storage_location: toLimitedRequiredText(payload.storage_location, 100),
+    ...(storageLocation ? { storage_location: storageLocation } : {}),
     event_time: payload.event_time,
     features: toLimitedRequiredText(payload.features, 255),
     contact_name: toLimitedRequiredText(payload.contact_name, 30),
@@ -478,6 +535,8 @@ export function publishPost(payload: PublishPostPayload) {
 }
 
 export function updateMyPost(payload: UpdateMyPostPayload) {
+  const storageLocation = toLimitedText(payload.storage_location, 100)
+
   const normalizedPayload: UpdateMyPostPayload = {
     post_id: payload.post_id,
     item_name: toLimitedRequiredText(payload.item_name, 50),
@@ -485,7 +544,7 @@ export function updateMyPost(payload: UpdateMyPostPayload) {
     item_type_other: toLimitedRequiredText(payload.item_type_other, 15),
     campus: payload.campus,
     location: toLimitedRequiredText(payload.location, 100),
-    storage_location: toLimitedRequiredText(payload.storage_location, 100),
+    ...(storageLocation ? { storage_location: storageLocation } : {}),
     event_time: payload.event_time,
     features: toLimitedRequiredText(payload.features, 200),
     contact_name: toLimitedRequiredText(payload.contact_name, 30),
@@ -545,6 +604,29 @@ export function getClaimList(postId: string | number) {
     url: '/claim/list',
     method: 'GET',
     params: { post_id: id },
+  })
+}
+
+export function getMyClaimList(params: MyClaimListParams = {}) {
+  const page = toPositiveInteger(params.page, 1)
+  const pageSize = toPageSize(params.page_size, 10)
+
+  return request<MyClaimListData>({
+    url: '/claim/my-list',
+    method: 'GET',
+    params: {
+      ...params,
+      page,
+      page_size: pageSize,
+    },
+  })
+}
+
+export function cancelClaimRequest(payload: CancelClaimPayload) {
+  return request<PostActionResult>({
+    url: '/claim/cancel',
+    method: 'POST',
+    data: payload,
   })
 }
 

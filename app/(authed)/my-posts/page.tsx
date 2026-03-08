@@ -417,10 +417,6 @@ function StatusSection({
               <Text className="block text-sm text-blue-900/80">{`类型：${record.itemType}`}</Text>
               <Text className="block text-sm text-blue-900/80">{`地点：${record.location}`}</Text>
               <Text className="block text-sm text-blue-900/80">{`发生时间：${formatDateTime(record.occurredAt)}`}</Text>
-              <Text className="block text-sm text-blue-900/80">{`物品特征：${record.features || '-'}`}</Text>
-              <Text className="block text-sm text-blue-900/80">
-                {`联系人：${record.contactName || '-'}${record.contactPhone ? ` ${record.contactPhone}` : ''}`}
-              </Text>
               {record.hasReward && record.rewardRemark && (
                 <Text className="block text-sm text-amber-700">{`悬赏说明：${record.rewardRemark}`}</Text>
               )}

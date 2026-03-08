@@ -2,7 +2,7 @@
 
 import type { LostFoundItem } from './types'
 import { Card, Empty, Flex, List, Tag, Typography } from 'antd'
-import { formatDateTime } from './utils'
+import { formatDateTime, resolveItemStatusTagColor } from './utils'
 
 const { Text } = Typography
 
@@ -51,7 +51,7 @@ function ItemList({ items, total, loading, onSelectItem }: ItemListProps) {
                       <Flex vertical gap={8}>
                         <Flex align="center" justify="space-between" gap={8}>
                           <Text className="text-base font-medium text-blue-900">{item.name}</Text>
-                          <Tag color={item.status === '已归还' ? 'blue' : item.status === '待认领' ? 'processing' : 'gold'}>
+                          <Tag color={resolveItemStatusTagColor(item.status)}>
                             {item.status}
                           </Tag>
                         </Flex>

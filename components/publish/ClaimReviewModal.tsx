@@ -13,14 +13,32 @@ interface ClaimReviewModalProps {
   onClose: () => void
 }
 
-function normalizeClaimStatus(value: string) {
-  const normalized = value.trim().toUpperCase()
+function toText(value: unknown) {
+  if (typeof value !== 'string')
+    return ''
+
+  return value.trim()
+}
+
+function toImageList(value: unknown) {
+  if (!Array.isArray(value))
+    return []
+
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map(item => item.trim())
+    .filter(Boolean)
+}
+
+function normalizeClaimStatus(value: unknown) {
+  const normalizedText = toText(value)
+  const normalized = normalizedText.toUpperCase()
   if (
     !normalized
     || normalized === '0'
     || normalized === 'PENDING'
     || normalized === 'WAITING'
-    || value.includes('待')
+    || normalizedText.includes('待')
   ) {
     return '待审核'
   }
@@ -29,8 +47,8 @@ function normalizeClaimStatus(value: string) {
     normalized === '1'
     || normalized === 'APPROVED'
     || normalized === 'MATCHED'
-    || value.includes('通过')
-    || value.includes('匹配')
+    || normalizedText.includes('通过')
+    || normalizedText.includes('匹配')
   ) {
     return '已通过'
   }
@@ -38,16 +56,16 @@ function normalizeClaimStatus(value: string) {
   if (
     normalized === '2'
     || normalized === 'REJECTED'
-    || value.includes('拒绝')
-    || value.includes('驳回')
+    || normalizedText.includes('拒绝')
+    || normalizedText.includes('驳回')
   ) {
     return '已拒绝'
   }
 
-  return value || '-'
+  return normalizedText || '-'
 }
 
-function isPendingClaimStatus(value: string) {
+function isPendingClaimStatus(value: unknown) {
   return normalizeClaimStatus(value) === '待审核'
 }
 
@@ -108,6 +126,7 @@ function ClaimReviewModal({ open, postId, postName, onClose }: ClaimReviewModalP
             locale={{ emptyText: <Empty description="暂无认领申请" /> }}
             dataSource={claimListQuery.data?.list || []}
             renderItem={(item) => {
+              const proofImages = toImageList(item.proof_images)
               const normalizedStatus = normalizeClaimStatus(item.status)
               const isPending = isPendingClaimStatus(item.status)
               return (
@@ -121,12 +140,12 @@ function ClaimReviewModal({ open, postId, postName, onClose }: ClaimReviewModalP
                     </Flex>
 
                     <Paragraph className="!mb-0 !text-sm !text-blue-900/80">
-                      {item.description || '无补充说明'}
+                      {toText(item.description) || '无补充说明'}
                     </Paragraph>
 
-                    {!!item.proof_images.length && (
+                    {!!proofImages.length && (
                       <Flex wrap gap={8}>
-                        {item.proof_images.map((image, index) => (
+                        {proofImages.map((image, index) => (
                           <Image
                             key={`${item.id}-${index + 1}`}
                             src={image}
@@ -141,7 +160,7 @@ function ClaimReviewModal({ open, postId, postName, onClose }: ClaimReviewModalP
 
                     <Flex align="center" justify="space-between" wrap gap={8}>
                       <Text className="text-xs text-blue-900/60">
-                        {`提交时间：${formatDateTime(item.created_at)}`}
+                        {`提交时间：${formatDateTime(toText(item.created_at))}`}
                       </Text>
                       {isPending && (
                         <Flex gap={8}>

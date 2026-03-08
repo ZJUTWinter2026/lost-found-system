@@ -265,24 +265,49 @@ function resolveLostFoundItemStatus(value: string, publishTypeValue?: string): I
   const upper = normalized.toUpperCase()
   const postType = resolvePostType(toText(publishTypeValue || ''))
 
+  if (normalized === '0' || normalized === '待审核' || upper === 'PENDING')
+    return '待审核'
+
+  if (normalized === '1' || normalized === '已通过' || upper === 'APPROVED')
+    return '已通过'
+
   if (
-    normalized === '已认领'
+    normalized === '3'
+    || normalized === '已认领'
     || normalized === '已归还'
+    || normalized === '已找回'
     || normalized === '已解决'
     || upper === 'CLAIMED'
     || upper === 'SOLVED'
-    || upper === 'ARCHIVED'
   ) {
-    return '已归还'
+    return postType === '失物' ? '已找回' : '已归还'
+  }
+
+  if (normalized === '已归档' || upper === 'ARCHIVED')
+    return '已归档'
+
+  if (
+    normalized === '4'
+    || normalized === '已取消'
+    || upper === 'CANCELLED'
+    || upper === 'CANCELED'
+  ) {
+    return '已取消'
   }
 
   if (
-    upper === 'CANCELLED'
-    || upper === 'CANCELED'
+    normalized === '5'
+    || normalized === '被驳回'
+    || normalized === '已驳回'
     || upper === 'REJECTED'
   ) {
-    return '已归还'
+    return '被驳回'
   }
+
+  if (normalized === '待认领')
+    return '待认领'
+  if (normalized === '寻找中')
+    return '寻找中'
 
   return postType === '招领' ? '待认领' : '寻找中'
 }

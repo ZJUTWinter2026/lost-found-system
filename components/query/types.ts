@@ -1,4 +1,13 @@
-export type ItemStatus = '寻找中' | '待认领' | '已归还'
+export type ItemStatus
+  = '待审核'
+    | '已通过'
+    | '已归还'
+    | '已找回'
+    | '已取消'
+    | '被驳回'
+    | '已归档'
+    | '寻找中'
+    | '待认领'
 
 export type ItemPostType = '失物' | '招领'
 export type CampusCode = 'ZHAO_HUI' | 'PING_FENG' | 'MO_GAN_SHAN'

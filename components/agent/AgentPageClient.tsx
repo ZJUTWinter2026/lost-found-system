@@ -1,12 +1,13 @@
 'use client'
 
 import type { BubbleItemType, ConversationItemType } from '@ant-design/x'
+import type { UploadProps } from 'antd'
 import type { ComponentRef } from 'react'
-import { PlusOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined, RobotOutlined, UploadOutlined, UserOutlined } from '@ant-design/icons'
 import { Bubble, Conversations, Sender, Welcome } from '@ant-design/x'
 import XMarkdown from '@ant-design/x-markdown'
 import { useQueryClient } from '@tanstack/react-query'
-import { Avatar, Button, Card, Flex, message, Spin, Typography } from 'antd'
+import { Avatar, Button, Card, Flex, Image, message, Spin, Typography, Upload } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { streamAgentMessage } from '@/api/modules/agent'
 import { queryKeys } from '@/api/queryKeys'
@@ -15,9 +16,16 @@ import {
   useAgentSessionsQuery,
   useCreateAgentSessionMutation,
 } from '@/hooks/queries/useAgentQueries'
+import { useUploadImagesMutation } from '@/hooks/queries/useUserAuthMutations'
 import { useAuthStore } from '@/stores/authStore'
 
 const { Text } = Typography
+const MAX_SENDER_IMAGE_COUNT = 3
+
+interface BubbleMediaContent {
+  text: string
+  images: string[]
+}
 
 function toDisplayText(value: string, fallback: string) {
   const normalized = value.trim()
@@ -43,6 +51,44 @@ function toMarkdownContent(content: unknown) {
   return String(content)
 }
 
+function toImageList(value: unknown) {
+  if (!Array.isArray(value))
+    return []
+
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map(item => item.trim())
+    .filter(Boolean)
+}
+
+function isBubbleMediaContent(value: unknown): value is BubbleMediaContent {
+  return typeof value === 'object'
+    && value !== null
+    && 'text' in value
+    && 'images' in value
+}
+
+function toBubbleText(value: unknown) {
+  if (isBubbleMediaContent(value))
+    return toMarkdownContent(value.text)
+
+  return toMarkdownContent(value)
+}
+
+function toBubbleImages(value: unknown) {
+  if (!isBubbleMediaContent(value))
+    return []
+
+  return toImageList(value.images)
+}
+
+function buildUserBubbleContent(text: string, images: string[]): BubbleMediaContent {
+  return {
+    text: text.trim(),
+    images: toImageList(images),
+  }
+}
+
 function AgentPageClient() {
   const queryClient = useQueryClient()
   const authUserId = useAuthStore(state => state.authUser?.id)
@@ -50,6 +96,7 @@ function AgentPageClient() {
   const streamAbortRef = useRef<AbortController | null>(null)
   const [selectedSessionId, setSelectedSessionId] = useState('')
   const [senderValue, setSenderValue] = useState('')
+  const [senderImages, setSenderImages] = useState<string[]>([])
   const [bubbleItems, setBubbleItems] = useState<BubbleItemType[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
 
@@ -60,6 +107,9 @@ function AgentPageClient() {
     !!resolvedActiveSessionId,
   )
   const createSessionMutation = useCreateAgentSessionMutation()
+  const uploadImagesMutation = useUploadImagesMutation()
+  const isInputDisabled = createSessionMutation.isPending || historyQuery.isLoading
+  const isUploadDisabled = isInputDisabled || isStreaming || uploadImagesMutation.isPending
 
   const roleConfig = useMemo(
     () => ({
@@ -71,7 +121,7 @@ function AgentPageClient() {
         typing: false,
         contentRender: (content: unknown) => (
           <XMarkdown
-            content={toMarkdownContent(content)}
+            content={toBubbleText(content)}
             streaming={{ hasNextChunk: !!item.streaming }}
             className="text-blue-900"
             openLinksInNewTab
@@ -83,6 +133,34 @@ function AgentPageClient() {
         variant: 'filled' as const,
         shape: 'default' as const,
         avatar: <Avatar size={28} icon={<UserOutlined />} className="!bg-blue-400" />,
+        contentRender: (content: unknown) => {
+          const text = toBubbleText(content)
+          const images = toBubbleImages(content)
+
+          return (
+            <Flex vertical gap={2}>
+              {!!images.length && (
+                <Flex gap={6} wrap className="max-w-[220px]">
+                  {images.map((image, index) => (
+                    <Image
+                      key={`${image.slice(0, 20)}-${index + 1}`}
+                      src={image}
+                      alt={`消息图片-${index + 1}`}
+                      width={72}
+                      height={72}
+                      className="rounded-md border border-white/40 object-cover"
+                    />
+                  ))}
+                </Flex>
+              )}
+              {!!text && (
+                <div className="whitespace-pre-wrap break-words text-sm leading-6">
+                  {text}
+                </div>
+              )}
+            </Flex>
+          )
+        },
       },
     }),
     [],
@@ -116,11 +194,21 @@ function AgentPageClient() {
 
   const historyBubbleItems = useMemo<BubbleItemType[]>(
     () =>
-      (historyQuery.data || []).map(record => ({
-        key: createBubbleKey('history'),
-        role: record.role === 'user' ? 'user' : 'ai',
-        content: record.content,
-      })),
+      (historyQuery.data || []).map((record) => {
+        if (record.role !== 'user') {
+          return {
+            key: createBubbleKey('history-ai'),
+            role: 'ai',
+            content: record.content,
+          }
+        }
+
+        return {
+          key: createBubbleKey('history-user'),
+          role: 'user',
+          content: buildUserBubbleContent(record.content, record.images),
+        }
+      }),
     [historyQuery.data],
   )
 
@@ -163,6 +251,7 @@ function AgentPageClient() {
       const sessionId = await createSessionMutation.mutateAsync({})
       setSelectedSessionId(sessionId)
       setSenderValue('')
+      setSenderImages([])
       setBubbleItems([])
     }
     catch (error) {
@@ -177,16 +266,19 @@ function AgentPageClient() {
     }
 
     setSenderValue('')
+    setSenderImages([])
     setBubbleItems([])
     setSelectedSessionId(String(sessionId))
   }
 
   const handleSubmit = async (inputValue: string) => {
     const normalizedMessage = inputValue.trim()
+    const normalizedImages = toImageList(senderImages).slice(0, MAX_SENDER_IMAGE_COUNT)
     if (!normalizedMessage || isStreaming)
       return
 
     setSenderValue('')
+    setSenderImages([])
     let nextSessionId = resolvedActiveSessionId
     let assistantKey = ''
     let assistantContent = ''
@@ -211,7 +303,7 @@ function AgentPageClient() {
           {
             key: userKey,
             role: 'user',
-            content: normalizedMessage,
+            content: buildUserBubbleContent(normalizedMessage, normalizedImages),
           },
           {
             key: assistantKey,
@@ -230,7 +322,7 @@ function AgentPageClient() {
         {
           session_id: nextSessionId,
           message: normalizedMessage,
-          images: [],
+          images: normalizedImages,
         },
         {
           onEvent: (event) => {
@@ -300,6 +392,42 @@ function AgentPageClient() {
       streamAbortRef.current = null
       setIsStreaming(false)
     }
+  }
+
+  const handleSenderImageUpload: UploadProps['beforeUpload'] = async (file) => {
+    if (isUploadDisabled)
+      return Upload.LIST_IGNORE
+
+    if (!file.type.startsWith('image/')) {
+      message.warning('仅支持上传图片文件')
+      return Upload.LIST_IGNORE
+    }
+
+    if (senderImages.length >= MAX_SENDER_IMAGE_COUNT) {
+      message.warning(`最多上传 ${MAX_SENDER_IMAGE_COUNT} 张图片`)
+      return Upload.LIST_IGNORE
+    }
+
+    if (!(file instanceof File)) {
+      message.error('图片文件无效，请重试')
+      return Upload.LIST_IGNORE
+    }
+
+    try {
+      const urls = await uploadImagesMutation.mutateAsync([file])
+      const uploadedUrl = urls[0]?.trim()
+      if (!uploadedUrl) {
+        message.error('图片上传失败，请重试')
+        return Upload.LIST_IGNORE
+      }
+
+      setSenderImages(prev => [...prev, uploadedUrl].slice(0, MAX_SENDER_IMAGE_COUNT))
+    }
+    catch (error) {
+      message.error(error instanceof Error ? error.message : '图片上传失败，请重试')
+    }
+
+    return Upload.LIST_IGNORE
   }
 
   return (
@@ -413,9 +541,67 @@ function AgentPageClient() {
               onSubmit={(value) => {
                 void handleSubmit(value)
               }}
+              header={senderImages.length
+                ? (
+                    <div className="pl-[15px] pr-2 pt-2">
+                      <div className="flex max-w-full flex-wrap gap-2">
+                        {senderImages.map((photo, index) => (
+                          <div
+                            key={`${photo.slice(0, 20)}-${index + 1}`}
+                            className="group relative overflow-hidden rounded-md border border-blue-100 bg-white p-1"
+                          >
+                            <Image
+                              src={photo}
+                              alt={`对话图片-${index + 1}`}
+                              width={38}
+                              height={38}
+                              preview={false}
+                              className="rounded object-cover"
+                            />
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<DeleteOutlined />}
+                              disabled={isUploadDisabled}
+                              className="!absolute !right-0.5 !top-0.5 !h-5 !w-5 !min-w-0 !rounded-full !bg-white/90 !p-0 opacity-0 transition-opacity group-hover:opacity-100"
+                              onClick={() => {
+                                setSenderImages(prev => prev.filter((_, imageIndex) => imageIndex !== index))
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                : null}
+              suffix={actionNode => (
+                <Flex align="center" gap={8} className="pl-[15px]">
+                  <Upload
+                    accept="image/*"
+                    multiple
+                    showUploadList={false}
+                    disabled={isUploadDisabled || senderImages.length >= MAX_SENDER_IMAGE_COUNT}
+                    beforeUpload={handleSenderImageUpload}
+                  >
+                    <Button
+                      type="text"
+                      icon={<UploadOutlined />}
+                      className="rounded-lg !px-2 text-blue-700"
+                      disabled={isUploadDisabled || senderImages.length >= MAX_SENDER_IMAGE_COUNT}
+                    >
+                      {uploadImagesMutation.isPending
+                        ? '上传中...'
+                        : senderImages.length >= MAX_SENDER_IMAGE_COUNT
+                          ? '已满'
+                          : '上传'}
+                    </Button>
+                  </Upload>
+                  {actionNode}
+                </Flex>
+              )}
               loading={isStreaming}
               onCancel={() => streamAbortRef.current?.abort()}
-              disabled={createSessionMutation.isPending || historyQuery.isLoading}
+              disabled={isInputDisabled}
               placeholder="输入问题并回车发送"
               className="rounded-lg border border-blue-100 bg-white"
               autoSize={{ minRows: 2, maxRows: 6 }}

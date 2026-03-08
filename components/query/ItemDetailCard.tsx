@@ -3,7 +3,7 @@
 import type { LostFoundItem } from './types'
 import { LeftOutlined } from '@ant-design/icons'
 import { Button, Card, Descriptions, Flex, Image, Tag, Typography } from 'antd'
-import { formatDateTime } from './utils'
+import { formatDateTime, resolveItemStatusTagColor } from './utils'
 
 const { Text } = Typography
 
@@ -33,7 +33,7 @@ function ItemDetailCard({ item, onBack }: ItemDetailCardProps) {
             />
             <Text className="text-base font-medium text-blue-700">{item.name}</Text>
           </Flex>
-          <Tag color={item.status === '已归还' ? 'blue' : item.status === '待认领' ? 'processing' : 'gold'}>
+          <Tag color={resolveItemStatusTagColor(item.status)}>
             {item.status}
           </Tag>
         </Flex>

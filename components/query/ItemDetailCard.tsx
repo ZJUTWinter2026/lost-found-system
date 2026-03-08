@@ -14,6 +14,7 @@ interface ItemDetailCardProps {
 
 function ItemDetailCard({ item, onBack }: ItemDetailCardProps) {
   const rewardText = item.hasReward ? `有${item.rewardRemark ? `（${item.rewardRemark}）` : ''}` : '无'
+  const showStorageLocation = item.postType === '招领' && !!item.storageLocation
 
   return (
     <Card
@@ -43,20 +44,24 @@ function ItemDetailCard({ item, onBack }: ItemDetailCardProps) {
           column={1}
           size="small"
           colon={false}
-          labelStyle={{
-            color: 'rgba(30, 58, 138, 0.9)',
-            fontSize: 14,
-            fontWeight: 500,
-          }}
-          contentStyle={{
-            color: 'rgba(30, 58, 138, 0.78)',
-            fontSize: 14,
+          styles={{
+            label: {
+              color: 'rgba(30, 58, 138, 0.9)',
+              fontSize: 14,
+              fontWeight: 500,
+            },
+            content: {
+              color: 'rgba(30, 58, 138, 0.78)',
+              fontSize: 14,
+            },
           }}
           items={[
             { key: 'description', label: '物品描述', children: item.description },
             { key: 'features', label: '特征', children: item.features },
             { key: 'occurredAt', label: '拾取/丢失时间', children: formatDateTime(item.occurredAt) },
-            { key: 'storageLocation', label: '存放地点', children: item.storageLocation },
+            ...(showStorageLocation
+              ? [{ key: 'storageLocation', label: '存放地点', children: item.storageLocation }]
+              : []),
             { key: 'claimCount', label: '认领人数', children: `${item.claimCount} 人` },
             { key: 'contact', label: '联系方式', children: '仅管理员和失主/拾主可见' },
             { key: 'reward', label: '有无悬赏', children: rewardText },

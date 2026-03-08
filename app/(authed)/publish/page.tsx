@@ -258,6 +258,11 @@ function PublishPage() {
   }, [form, hasReward])
 
   useEffect(() => {
+    if (postType !== '招领')
+      form.setFieldValue('storageLocation', undefined)
+  }, [form, postType])
+
+  useEffect(() => {
     if (!itemType || presetItemTypeValues.includes(itemType))
       return
 
@@ -304,7 +309,7 @@ function PublishPage() {
         item_type: itemTypeValue,
         campus: values.campus as PostCampus,
         location: normalizedLocation,
-        storage_location: storageLocation,
+        ...(resolvedPostType === '招领' ? { storage_location: storageLocation } : {}),
         event_time: toIsoDateText(values.occurredAt),
         features: (values.features ?? '').trim(),
         contact_name: (values.contactName ?? '').trim(),
@@ -442,17 +447,23 @@ function PublishPage() {
               </Form.Item>
             </Flex>
 
-            <Form.Item
-              name="storageLocation"
-              label="存放地点"
-              className="!mb-0"
-              rules={[{ required: true, message: '请输入存放地点' }]}
-            >
-              <Input
-                maxLength={100}
-                placeholder="请输入存放地点"
-              />
-            </Form.Item>
+            {postType === '招领' && (
+              <Form.Item
+                preserve={false}
+                name="storageLocation"
+                label="存放地点"
+                className="!mb-0"
+                rules={[
+                  { required: true, message: '请输入存放地点' },
+                  { max: 100, message: '存放地点最多 100 个字符' },
+                ]}
+              >
+                <Input
+                  maxLength={100}
+                  placeholder="请输入存放地点"
+                />
+              </Form.Item>
+            )}
 
             <Form.Item
               name="features"

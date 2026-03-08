@@ -43,7 +43,7 @@ function ClaimRequestModal({ open, item, onClose }: ClaimRequestModalProps) {
         description,
         proofImages: photos.slice(0, 3),
       })
-      message.success(`${claimApplyTitle}已提交，等待管理员审核`)
+      message.success(`${claimApplyTitle}已提交，可在“我的认领”查看进度`)
       handleClose()
     }
     catch (error) {

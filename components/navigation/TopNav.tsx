@@ -15,6 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'query', label: '查询信息', path: '/query' },
   { key: 'publish', label: '发布信息', path: '/publish' },
   { key: 'my-posts', label: '我的发布', path: '/my-posts' },
+  { key: 'my-claims', label: '我的认领', path: '/my-claims' },
 ]
 
 const ACTION_BUTTON_CLASSNAME = 'rounded-lg !h-11 !px-4 !text-base !font-medium !text-blue-600 transition-none hover:!bg-transparent hover:!text-blue-600 active:!bg-transparent'

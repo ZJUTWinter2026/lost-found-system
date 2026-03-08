@@ -1,7 +1,7 @@
 import type { AgentHistoryParams } from '@/api/modules/agent'
 import type { AnnouncementListParams } from '@/api/modules/announcement'
 import type { FeedbackListParams } from '@/api/modules/feedback'
-import type { LostFoundListParams, MyPostListParams } from '@/api/modules/lostFound'
+import type { LostFoundListParams, MyClaimListParams, MyPostListParams } from '@/api/modules/lostFound'
 
 function removeEmptyFields<T extends object>(params: T): T {
   return Object.fromEntries(
@@ -40,6 +40,9 @@ export const queryKeys = {
     all: CLAIM_ROOT_KEY,
     lists: () => [...CLAIM_ROOT_KEY, 'list'] as const,
     list: (postId: string) => [...CLAIM_ROOT_KEY, 'list', postId] as const,
+    myLists: () => [...CLAIM_ROOT_KEY, 'my-list'] as const,
+    myList: (params: MyClaimListParams = {}) =>
+      [...CLAIM_ROOT_KEY, 'my-list', removeEmptyFields(params)] as const,
   },
   public: {
     all: PUBLIC_ROOT_KEY,

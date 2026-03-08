@@ -5,6 +5,7 @@ import { ExclamationCircleFilled } from '@ant-design/icons'
 import { Button, Flex, message, Modal, Typography } from 'antd'
 import { usePathname, useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import { useAuthStore } from '@/stores/authStore'
 import { clearLoginSession } from '@/utils/auth'
 import AnnouncementModal from './AnnouncementModal'
 
@@ -23,7 +24,9 @@ const ACTION_BUTTON_CLASSNAME = 'rounded-lg !h-11 !px-4 !text-base !font-medium 
 function TopNav() {
   const router = useRouter()
   const pathname = usePathname()
-  const [announcementOpen, setAnnouncementOpen] = useState(false)
+  const [announcementOpen, setAnnouncementOpen] = useState(() => (
+    useAuthStore.getState().consumeAnnouncementAutoOpen()
+  ))
 
   const activeNav = useMemo(
     () => NAV_ITEMS.find(item => pathname.startsWith(item.path))?.key ?? null,

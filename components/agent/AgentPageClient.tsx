@@ -15,6 +15,7 @@ import {
   useAgentSessionsQuery,
   useCreateAgentSessionMutation,
 } from '@/hooks/queries/useAgentQueries'
+import { useAuthStore } from '@/stores/authStore'
 
 const { Text } = Typography
 
@@ -44,6 +45,7 @@ function toMarkdownContent(content: unknown) {
 
 function AgentPageClient() {
   const queryClient = useQueryClient()
+  const authUserId = useAuthStore(state => state.authUser?.id)
   const bubbleListRef = useRef<ComponentRef<typeof Bubble.List> | null>(null)
   const streamAbortRef = useRef<AbortController | null>(null)
   const [selectedSessionId, setSelectedSessionId] = useState('')
@@ -268,9 +270,9 @@ function AgentPageClient() {
         })
       })
 
-      void queryClient.invalidateQueries({ queryKey: queryKeys.agent.sessions() })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.agent.sessions(authUserId) })
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.agent.history({ session_id: nextSessionId }),
+        queryKey: queryKeys.agent.history({ session_id: nextSessionId }, authUserId),
       })
     }
     catch (error) {

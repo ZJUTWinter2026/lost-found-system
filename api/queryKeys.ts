@@ -18,6 +18,9 @@ const CLAIM_ROOT_KEY = ['claim'] as const
 const PUBLIC_ROOT_KEY = ['public'] as const
 const ANNOUNCEMENT_ROOT_KEY = ['announcement'] as const
 const AGENT_ROOT_KEY = ['agent'] as const
+interface AgentScopeParams {
+  user_id?: number
+}
 
 export const queryKeys = {
   lostFound: {
@@ -50,9 +53,10 @@ export const queryKeys = {
   },
   agent: {
     all: AGENT_ROOT_KEY,
-    sessions: () => [...AGENT_ROOT_KEY, 'sessions'] as const,
-    history: (params: AgentHistoryParams) =>
-      [...AGENT_ROOT_KEY, 'history', removeEmptyFields(params)] as const,
+    sessions: (userId?: number) =>
+      [...AGENT_ROOT_KEY, 'sessions', removeEmptyFields({ user_id: userId } satisfies AgentScopeParams)] as const,
+    history: (params: AgentHistoryParams, userId?: number) =>
+      [...AGENT_ROOT_KEY, 'history', removeEmptyFields({ ...params, user_id: userId })] as const,
   },
   post: {
     all: POST_ROOT_KEY,

@@ -64,14 +64,6 @@ export const TIME_RANGE_HOUR_MAP: Record<TimeRangeValue, number> = {
 
 export const FEEDBACK_TYPE_OTHER_VALUE = '__other_feedback_type__'
 
-export const FEEDBACK_TYPE_OPTIONS = [
-  { label: '信息不全', value: '信息不全' },
-  { label: '不实消息', value: '不实消息' },
-  { label: '恶心血腥', value: '恶心血腥' },
-  { label: '涉黄信息', value: '涉黄信息' },
-  { label: '其它类型', value: FEEDBACK_TYPE_OTHER_VALUE },
-]
-
 export const MOCK_LOST_FOUND_ITEMS: LostFoundItem[] = [
   {
     id: 'LF-0001',

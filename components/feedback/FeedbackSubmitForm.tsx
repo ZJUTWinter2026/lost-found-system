@@ -2,15 +2,13 @@
 
 import { Button, Card, Flex, Input, message, Radio, Typography } from 'antd'
 import { useMemo, useState } from 'react'
-import {
-  FEEDBACK_TYPE_OPTIONS,
-  FEEDBACK_TYPE_OTHER_VALUE,
-} from '@/components/query/constants'
+import { FEEDBACK_TYPE_OTHER_VALUE } from '@/components/query/constants'
 import { usePublicConfigQuery } from '@/hooks/queries/usePublicQueries'
 
 const { TextArea } = Input
 const { Text } = Typography
 const OTHER_TYPE_LABEL = '其它类型'
+const OTHER_TYPE_ALIASES = new Set([OTHER_TYPE_LABEL, '其他类型'])
 
 interface FeedbackSubmitFormProps {
   onSubmit: (payload: { types: string[], description: string }) => Promise<boolean | void> | boolean | void
@@ -36,11 +34,8 @@ function FeedbackSubmitForm({
       .map(type => type.trim())
       .filter(Boolean)
 
-    if (!configTypes.length)
-      return FEEDBACK_TYPE_OPTIONS
-
     const mappedOptions = configTypes.map((type) => {
-      if (type === OTHER_TYPE_LABEL || type === FEEDBACK_TYPE_OTHER_VALUE) {
+      if (OTHER_TYPE_ALIASES.has(type) || type === FEEDBACK_TYPE_OTHER_VALUE) {
         return {
           label: OTHER_TYPE_LABEL,
           value: FEEDBACK_TYPE_OTHER_VALUE,
@@ -57,6 +52,10 @@ function FeedbackSubmitForm({
       new Map(mappedOptions.map(option => [option.value, option])).values(),
     )
   }, [publicConfigQuery.data?.feedbackTypes])
+  const hasAvailableTypeOptions = useMemo(
+    () => feedbackTypeOptions.length > 0,
+    [feedbackTypeOptions.length],
+  )
 
   const trimmedOtherTypeInput = useMemo(
     () => otherTypeInput.trim(),
@@ -65,6 +64,10 @@ function FeedbackSubmitForm({
   const hasSelectedOtherType = useMemo(
     () => selectedType === FEEDBACK_TYPE_OTHER_VALUE,
     [selectedType],
+  )
+  const hasSelectedConfiguredType = useMemo(
+    () => feedbackTypeOptions.some(option => option.value === selectedType),
+    [feedbackTypeOptions, selectedType],
   )
   const isOtherTypeConfirmed = useMemo(
     () =>
@@ -82,7 +85,10 @@ function FeedbackSubmitForm({
     return [selectedType]
   }, [confirmedOtherType, isOtherTypeConfirmed, selectedType])
   const canSubmit = useMemo(() => {
-    if (!selectedType)
+    if (!hasAvailableTypeOptions)
+      return false
+
+    if (!selectedType || !hasSelectedConfiguredType)
       return false
 
     if (hasSelectedOtherType && !isOtherTypeConfirmed)
@@ -91,6 +97,8 @@ function FeedbackSubmitForm({
     return resolvedTypeList.length > 0
   }, [
     hasSelectedOtherType,
+    hasAvailableTypeOptions,
+    hasSelectedConfiguredType,
     isOtherTypeConfirmed,
     resolvedTypeList.length,
     selectedType,
@@ -134,6 +142,11 @@ function FeedbackSubmitForm({
   }
 
   const handleSubmit = async () => {
+    if (!hasAvailableTypeOptions) {
+      message.warning('当前未配置投诉与反馈类型，请联系管理员')
+      return
+    }
+
     if (!canSubmit) {
       message.warning('请选择一种投诉与反馈类型')
       return
@@ -170,6 +183,7 @@ function FeedbackSubmitForm({
           value={selectedType}
           onChange={event => handleTypeChange(event.target.value as string)}
           className="w-full"
+          disabled={!hasAvailableTypeOptions}
         >
           <Flex vertical gap={10}>
             {feedbackTypeOptions.map(option => (
@@ -179,6 +193,11 @@ function FeedbackSubmitForm({
             ))}
           </Flex>
         </Radio.Group>
+        {!publicConfigQuery.isLoading && !hasAvailableTypeOptions && (
+          <Text className="text-xs text-blue-900/60">
+            当前未配置投诉与反馈类型，请联系管理员
+          </Text>
+        )}
       </Flex>
 
       {hasSelectedOtherType && (

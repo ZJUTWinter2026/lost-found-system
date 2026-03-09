@@ -1,4 +1,5 @@
 import type { FeedbackRecord, SubmitFeedbackPayload } from '@/components/query/types'
+import { getPublicConfig } from '@/api/modules/public'
 import { request } from '@/api/request'
 
 export interface FeedbackListParams {
@@ -35,12 +36,8 @@ interface SubmitFeedbackResponseData {
   feedback_id: number
 }
 
-const PRESET_FEEDBACK_TYPES = new Set([
-  '信息不全',
-  '不实消息',
-  '恶心血腥',
-  '涉黄信息',
-])
+const FEEDBACK_OTHER_TYPE = '其它类型'
+const FEEDBACK_OTHER_TYPE_ALIASES = new Set([FEEDBACK_OTHER_TYPE, '其他类型'])
 
 function mapFeedbackItemToRecord(item: FeedbackListItem): FeedbackRecord {
   const mergedType = item.type === '其它类型' && item.type_other
@@ -57,17 +54,33 @@ function mapFeedbackItemToRecord(item: FeedbackListItem): FeedbackRecord {
   }
 }
 
-function resolveSubmitTypePayload(type: string) {
+function resolvePresetFeedbackTypes(configuredTypes: string[]) {
+  return new Set(
+    configuredTypes
+      .map(type => type.trim())
+      .filter(Boolean)
+      .filter(type => !FEEDBACK_OTHER_TYPE_ALIASES.has(type)),
+  )
+}
+
+function resolveSubmitTypePayload(type: string, presetFeedbackTypes: Set<string>) {
   const normalized = type.trim()
-  if (PRESET_FEEDBACK_TYPES.has(normalized)) {
+  if (presetFeedbackTypes.has(normalized)) {
     return {
       type: normalized,
       type_other: '',
     }
   }
 
+  if (FEEDBACK_OTHER_TYPE_ALIASES.has(normalized)) {
+    return {
+      type: FEEDBACK_OTHER_TYPE,
+      type_other: '',
+    }
+  }
+
   return {
-    type: '其它类型',
+    type: FEEDBACK_OTHER_TYPE,
     type_other: normalized,
   }
 }
@@ -105,9 +118,12 @@ export async function submitFeedbackRequest(payload: SubmitFeedbackPayload) {
 
   const postId = resolvePostId(payload.postId)
   const description = payload.description.trim()
+  const presetFeedbackTypes = await getPublicConfig()
+    .then(config => resolvePresetFeedbackTypes(config.feedbackTypes || []))
+    .catch(() => new Set<string>())
 
   const requestPayloads: SubmitFeedbackRequestPayload[] = types.map((type) => {
-    const resolvedType = resolveSubmitTypePayload(type)
+    const resolvedType = resolveSubmitTypePayload(type, presetFeedbackTypes)
     return {
       post_id: postId,
       type: resolvedType.type,

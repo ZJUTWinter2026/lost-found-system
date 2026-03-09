@@ -3,19 +3,17 @@
 import { Button, Card, Flex, Input, message, Modal, Radio, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import { useSubmitFeedbackMutation } from '@/hooks/queries/useFeedbackQueries'
+import { usePublicConfigQuery } from '@/hooks/queries/usePublicQueries'
 
 const { TextArea } = Input
 const { Text } = Typography
 
 const COMPLAINT_OTHER_TYPE_VALUE = '__item_detail_complaint_other_type__'
-
-const COMPLAINT_TYPE_OPTIONS = [
-  { label: '信息不全', value: '信息不全' },
-  { label: '不实消息', value: '不实消息' },
-  { label: '恶心血腥', value: '恶心血腥' },
-  { label: '涉黄信息', value: '涉黄信息' },
-  { label: '其它类型', value: COMPLAINT_OTHER_TYPE_VALUE },
-]
+const COMPLAINT_OTHER_TYPE_LABEL = '其它类型'
+const COMPLAINT_OTHER_TYPE_ALIASES = new Set([
+  COMPLAINT_OTHER_TYPE_LABEL,
+  '其他类型',
+])
 
 interface ComplaintModalProps {
   open: boolean
@@ -24,21 +22,56 @@ interface ComplaintModalProps {
 }
 
 function ComplaintModal({ open, itemId, onClose }: ComplaintModalProps) {
+  const publicConfigQuery = usePublicConfigQuery(open)
   const submitFeedbackMutation = useSubmitFeedbackMutation()
   const [selectedType, setSelectedType] = useState('')
   const [customType, setCustomType] = useState('')
   const [description, setDescription] = useState('')
 
+  const complaintTypeOptions = useMemo(() => {
+    const configTypes = (publicConfigQuery.data?.feedbackTypes || [])
+      .map(type => type.trim())
+      .filter(Boolean)
+
+    const mappedOptions = configTypes.map((type) => {
+      if (COMPLAINT_OTHER_TYPE_ALIASES.has(type)) {
+        return {
+          label: COMPLAINT_OTHER_TYPE_LABEL,
+          value: COMPLAINT_OTHER_TYPE_VALUE,
+        }
+      }
+
+      return {
+        label: type,
+        value: type,
+      }
+    })
+
+    return Array.from(
+      new Map(mappedOptions.map(option => [option.value, option])).values(),
+    )
+  }, [publicConfigQuery.data?.feedbackTypes])
+  const hasAvailableTypeOptions = useMemo(
+    () => complaintTypeOptions.length > 0,
+    [complaintTypeOptions.length],
+  )
   const trimmedCustomType = useMemo(() => customType.trim(), [customType])
   const hasSelectedOtherType = useMemo(
     () => selectedType === COMPLAINT_OTHER_TYPE_VALUE,
     [selectedType],
   )
+  const hasSelectedConfiguredType = useMemo(
+    () => complaintTypeOptions.some(option => option.value === selectedType),
+    [complaintTypeOptions, selectedType],
+  )
   const resolvedType = useMemo(
     () => (hasSelectedOtherType ? trimmedCustomType : selectedType),
     [hasSelectedOtherType, selectedType, trimmedCustomType],
   )
-  const canSubmit = useMemo(() => !!resolvedType, [resolvedType])
+  const canSubmit = useMemo(
+    () => hasAvailableTypeOptions && hasSelectedConfiguredType && !!resolvedType,
+    [hasAvailableTypeOptions, hasSelectedConfiguredType, resolvedType],
+  )
 
   const resetForm = () => {
     setSelectedType('')
@@ -59,8 +92,18 @@ function ComplaintModal({ open, itemId, onClose }: ComplaintModalProps) {
   }
 
   const handleSubmit = async () => {
+    if (!hasAvailableTypeOptions) {
+      message.warning('当前未配置投诉类型，请联系管理员')
+      return
+    }
+
     if (!selectedType) {
       message.warning('请选择投诉类型')
+      return
+    }
+
+    if (!hasSelectedConfiguredType) {
+      message.warning('请选择有效的投诉类型')
       return
     }
 
@@ -103,15 +146,21 @@ function ComplaintModal({ open, itemId, onClose }: ComplaintModalProps) {
             value={selectedType}
             onChange={event => handleTypeChange(event.target.value)}
             className="w-full"
+            disabled={!hasAvailableTypeOptions}
           >
             <Flex vertical gap={10}>
-              {COMPLAINT_TYPE_OPTIONS.map(option => (
+              {complaintTypeOptions.map(option => (
                 <Radio key={option.value} value={option.value}>
                   {option.label}
                 </Radio>
               ))}
             </Flex>
           </Radio.Group>
+          {!publicConfigQuery.isLoading && !hasAvailableTypeOptions && (
+            <Text className="text-xs text-blue-900/60">
+              当前未配置投诉类型，请联系管理员
+            </Text>
+          )}
         </Flex>
 
         {hasSelectedOtherType && (

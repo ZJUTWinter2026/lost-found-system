@@ -254,6 +254,22 @@ function toLimitedRequiredText(value: unknown, maxLength: number) {
   return toText(value).slice(0, maxLength)
 }
 
+function toStringArray(value: unknown) {
+  if (!Array.isArray(value))
+    return []
+
+  return value.map(item => toText(item)).filter(Boolean)
+}
+
+function toNonNegativeInteger(value: unknown, fallback = 0) {
+  const numericValue = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(numericValue))
+    return fallback
+
+  const parsed = Math.trunc(numericValue)
+  return parsed >= 0 ? parsed : fallback
+}
+
 function resolvePostType(value: string): ItemPostType {
   const normalized = toText(value)
   const upper = normalized.toUpperCase()
@@ -296,51 +312,83 @@ function resolveReviewStatus(value: string, statusText?: string): PublishReviewS
   return '待审核'
 }
 
+function resolveCampusCode(value: string): LostFoundItem['campus'] {
+  const normalized = toText(value)
+  const upper = normalized.toUpperCase()
+  if (upper === 'ZHAO_HUI' || normalized === '朝晖')
+    return 'ZHAO_HUI'
+  if (upper === 'PING_FENG' || normalized === '屏峰')
+    return 'PING_FENG'
+  if (upper === 'MO_GAN_SHAN' || normalized === '莫干山')
+    return 'MO_GAN_SHAN'
+
+  return undefined
+}
+
 export function mapPostListItemToLostFoundItem(item: LostFoundListItem): LostFoundItem {
+  const itemName = toText(item.item_name)
+  const itemType = toText(item.item_type_other) || toText(item.item_type)
+  const location = toText(item.location)
+  const eventTime = toText(item.event_time)
+  const features = toText(item.features)
   const postType = resolvePostType(item.publish_type)
 
   return {
     id: String(item.id),
-    name: item.item_name,
-    itemType: toText(item.item_type_other) || item.item_type,
-    location: item.location,
-    occurredAt: item.event_time,
+    name: itemName,
+    itemType,
+    campus: resolveCampusCode(item.campus),
+    location,
+    occurredAt: eventTime,
     status: mapLostFoundStatusToItemStatus(item.status, { publishType: item.publish_type }),
     postType,
-    description: item.features,
-    features: item.features,
-    storageLocation: postType === '招领' ? item.location : '',
+    description: features,
+    features,
+    storageLocation: postType === '招领' ? location : '',
     claimCount: 0,
     contact: '',
-    hasReward: item.has_reward,
+    hasReward: !!item.has_reward,
     rewardRemark: toText(item.reward_description) || undefined,
-    photos: item.images,
+    photos: toStringArray(item.images),
   }
 }
 
 export function mapPostDetailToLostFoundItem(item: LostFoundDetailData): LostFoundItem {
+  const itemName = toText(item.item_name)
+  const itemType = toText(item.item_type_other) || toText(item.item_type)
+  const location = toText(item.location)
+  const eventTime = toText(item.event_time)
+  const features = toText(item.features)
   const contactName = toText(item.contact_name)
   const contactPhone = toText(item.contact_phone)
   const postType = resolvePostType(item.publish_type)
 
   return {
     id: String(item.id),
-    name: item.item_name,
-    itemType: toText(item.item_type_other) || item.item_type,
-    location: item.location,
-    occurredAt: item.event_time,
+    name: itemName,
+    itemType,
+    campus: resolveCampusCode(item.campus),
+    location,
+    occurredAt: eventTime,
     status: mapLostFoundStatusToItemStatus(item.status, { publishType: item.publish_type }),
     postType,
-    description: item.features,
-    features: item.features,
+    description: features,
+    features,
     storageLocation: postType === '招领'
-      ? (toText(item.storage_location) || item.location)
+      ? (toText(item.storage_location) || location)
       : '',
-    claimCount: item.claim_count,
+    claimCount: toNonNegativeInteger(item.claim_count, 0),
     contact: [contactName, contactPhone].filter(Boolean).join(' '),
-    hasReward: item.has_reward,
+    contactName: contactName || undefined,
+    contactPhone: contactPhone || undefined,
+    hasReward: !!item.has_reward,
     rewardRemark: toText(item.reward_description) || undefined,
-    photos: item.images,
+    createdAt: toText(item.created_at) || undefined,
+    processedAt: toText(item.processed_at) || undefined,
+    cancelReason: toText(item.cancel_reason) || undefined,
+    rejectReason: toText(item.reject_reason) || undefined,
+    archiveMethod: toText(item.archive_method) || undefined,
+    photos: toStringArray(item.images),
   }
 }
 

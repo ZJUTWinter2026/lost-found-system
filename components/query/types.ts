@@ -30,6 +30,7 @@ export interface LostFoundItem {
   id: string
   name: string
   itemType: string
+  campus?: CampusCode
   location: string
   occurredAt: string
   status: ItemStatus
@@ -39,8 +40,15 @@ export interface LostFoundItem {
   storageLocation: string
   claimCount: number
   contact: string
+  contactName?: string
+  contactPhone?: string
   hasReward: boolean
   rewardRemark?: string
+  createdAt?: string
+  processedAt?: string
+  cancelReason?: string
+  rejectReason?: string
+  archiveMethod?: string
   photos: string[]
 }
 

@@ -13,6 +13,10 @@ interface ItemListProps {
   onSelectItem: (itemId: string) => void
 }
 
+function resolvePostTypeTagColor(postType: LostFoundItem['postType']) {
+  return postType === '失物' ? 'blue' : 'cyan'
+}
+
 function ItemList({ items, total, loading, onSelectItem }: ItemListProps) {
   return (
     <Card
@@ -51,9 +55,14 @@ function ItemList({ items, total, loading, onSelectItem }: ItemListProps) {
                       <Flex vertical gap={8}>
                         <Flex align="center" justify="space-between" gap={8}>
                           <Text className="text-base font-medium text-blue-900">{item.name}</Text>
-                          <Tag color={resolveItemStatusTagColor(item.status)}>
-                            {item.status}
-                          </Tag>
+                          <Flex align="center" gap={6} wrap>
+                            <Tag color={resolvePostTypeTagColor(item.postType)}>
+                              {item.postType}
+                            </Tag>
+                            <Tag color={resolveItemStatusTagColor(item.status)}>
+                              {item.status}
+                            </Tag>
+                          </Flex>
                         </Flex>
                         <Text className="text-sm text-blue-900/70">{`地点：${item.location}`}</Text>
                         <Text className="text-sm text-blue-900/70">
